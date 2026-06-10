@@ -1,0 +1,101 @@
+table_name,column_name,data_type,is_nullable
+customers,id,bigint,NO
+customers,tenant_id,text,NO
+customers,name,character varying,NO
+customers,phone,character varying,YES
+customers,email,character varying,YES
+customers,address,text,YES
+customers,points,integer,YES
+customers,created_at,timestamp with time zone,YES
+discounts,id,bigint,NO
+discounts,name,text,NO
+discounts,code,text,NO
+discounts,type,text,NO
+discounts,value,numeric,NO
+discounts,min_purchase,numeric,YES
+discounts,is_active,boolean,YES
+discounts,created_at,timestamp with time zone,NO
+discounts,product_id,text,YES
+discounts,product_ids,ARRAY,YES
+discounts,tenant_id,text,YES
+duration_units,id,bigint,NO
+duration_units,created_at,timestamp with time zone,NO
+duration_units,name,text,NO
+duration_units,tenant_id,character varying,YES
+expenses,id,bigint,NO
+expenses,tenant_id,text,NO
+expenses,record_type,text,NO
+expenses,category,text,NO
+expenses,title,text,NO
+expenses,supplier_name,text,YES
+expenses,total,numeric,NO
+expenses,payment_method,text,NO
+expenses,notes,text,YES
+expenses,staff_id,bigint,YES
+expenses,cashier_name,text,YES
+expenses,stock_item_id,bigint,YES
+expenses,stock_qty,numeric,YES
+expenses,stock_synced,boolean,NO
+expenses,created_at,timestamp with time zone,NO
+product_categories,id,bigint,NO
+product_categories,name,character varying,NO
+product_categories,type,character varying,YES
+product_categories,code,character varying,NO
+product_categories,created_at,timestamp with time zone,YES
+product_categories,tenant_id,character varying,YES
+product_units,id,bigint,NO
+product_units,created_at,timestamp with time zone,NO
+product_units,name,text,NO
+product_units,tenant_id,character varying,YES
+products,id,bigint,NO
+products,created_at,timestamp with time zone,NO
+products,tenant_id,text,NO
+products,name,text,NO
+products,price,numeric,NO
+products,category,text,NO
+products,is_active,boolean,NO
+products,duration,integer,YES
+products,unit,text,YES
+products,min_qty,numeric,YES
+products,duration_type,text,YES
+products,image_url,text,YES
+products,barcode,text,YES
+settings,id,bigint,NO
+settings,tenant_id,text,YES
+settings,wa_template,text,YES
+settings,created_at,timestamp with time zone,YES
+staff,id,bigint,NO
+staff,tenant_id,text,NO
+staff,name,text,NO
+staff,email,text,NO
+staff,password,text,NO
+staff,role,text,NO
+staff,phone,text,YES
+staff,status,text,NO
+staff,created_at,timestamp with time zone,NO
+stock_items,id,bigint,NO
+stock_items,tenant_id,text,NO
+stock_items,name,text,NO
+stock_items,current_stock,numeric,YES
+stock_items,unit,text,YES
+stock_items,min_stock,numeric,YES
+stock_items,created_at,timestamp with time zone,NO
+stock_items,usage_coefficient,numeric,YES
+stock_items,product_id,text,YES
+stock_logs,id,bigint,NO
+stock_logs,tenant_id,text,YES
+stock_logs,stock_item_id,bigint,YES
+stock_logs,stock_item_name,text,YES
+stock_logs,type,text,YES
+stock_logs,qty,numeric,YES
+stock_logs,note,text,YES
+stock_logs,stock_before,numeric,YES
+stock_logs,stock_after,numeric,YES
+stock_logs,created_at,timestamp with time zone,YES
+stock_logs,actor_name,text,YES
+tenants,tenant_id,text,NO
+tenants,tenant_name,text,NO
+tenants,address,text,YES
+tenants,phone,text,YES
+tenants,created_at,timestamp with time zone,YES
+transactions,id,bigint,NO

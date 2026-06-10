@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   STATUS ICON ANIMATIONS - Riwayat Deposit
+   ============================================ */
+
+/* PENDING: Jam yang berputar terus menerus */
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* PENDING: Container yang berdenyut */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    transform: scale(1.05);
+  }
+}
+
+/* DITOLAK: Guncangan/getaran yang agresif */
+@keyframes shake-reject {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-3px) rotate(-5deg); }
+  20% { transform: translateX(3px) rotate(5deg); }
+  30% { transform: translateX(-3px) rotate(-3deg); }
+  40% { transform: translateX(3px) rotate(3deg); }
+  50% { transform: translateX(-2px) rotate(-2deg); }
+  60% { transform: translateX(2px) rotate(2deg); }
+  70% { transform: translateX(-1px) rotate(-1deg); }
+  80% { transform: translateX(1px) rotate(1deg); }
+  90% { transform: translateX(0) rotate(0deg); }
+}
+
+/* DITOLAK: Silang yang flash merah */
+@keyframes flash-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* BERHASIL: Ceklis yang pop-in lalu jalan terus */
+@keyframes check-pop {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.25); }
+  50% { transform: scale(0.95); }
+  75% { transform: scale(1.1); }
+}
+
+/* BERHASIL: Glow hijau berkedip */
+@keyframes glow-green {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+/* === CLASSES === */
+
+.status-icon-pending {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.status-icon-pending svg {
+  animation: spin-slow 3s linear infinite;
+}
+
+.status-icon-ditolak {
+  animation: shake-reject 1.5s ease-in-out infinite;
+}
+.status-icon-ditolak svg {
+  animation: flash-red 1s ease-in-out infinite;
+}
+
+.status-icon-berhasil {
+  animation: glow-green 2s ease-in-out infinite;
+}
+.status-icon-berhasil svg {
+  animation: check-pop 2s ease-in-out infinite;
+}
+
+/* Badge dots */
+.status-dot-pending {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+.status-dot-ditolak {
+  animation: flash-red 0.8s ease-in-out infinite;
+}
+.status-dot-berhasil {
+  animation: check-pop 2s ease-in-out infinite;
+}

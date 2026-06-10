@@ -1,0 +1,49 @@
+{
+  "T1A86BC39B52F": [
+    {
+      "expiration_date": "2057-06-02T06:30:24.402Z",
+      "id": "37c0308c-a534-48c2-8f80-3ef199aa35c0",
+      "owner_id": "6a1d48d20e5c25fdcc226ab7",
+      "external_id": "fixed-va-T1A86BC39B52F-bca",
+      "merchant_code": "38166",
+      "account_number": "381669999857950",
+      "bank_code": "BCA",
+      "name": "AGRA LAUNDRY",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    },
+    {
+      "expiration_date": "2057-06-02T06:30:25.170Z",
+      "id": "dc8942a3-f8af-400c-8164-0ea7193e5507",
+      "owner_id": "6a1d48d20e5c25fdcc226ab7",
+      "external_id": "fixed-va-T1A86BC39B52F-bni",
+      "merchant_code": "8808",
+      "account_number": "8808999998265210",
+      "bank_code": "BNI",
+      "name": "XDT-AGRA LAUNDRY",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    },
+    {
+      "expiration_date": "2057-06-02T06:30:25.771Z",
+      "id": "facbf784-2c0d-4df9-a020-798ee5181455",
+      "owner_id": "6a1d48d20e5c25fdcc226ab7",
+      "external_id": "fixed-va-T1A86BC39B52F-bri",
+      "merchant_code": "13281",
+      "account_number": "132819999839294",
+      "bank_code": "BRI",
+      "name": "AGRA LAUNDRY",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    }
+  ]
+}
