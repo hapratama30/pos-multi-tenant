@@ -1575,6 +1575,8 @@ app.post('/api/ppob/pay-with-balance', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend AGRAPos jalan di port ${PORT}`));
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => console.log(`Backend AGRAPos jalan di port ${PORT}`));
+}
 
-setInterval(() => {}, 1000);
+export default app;
