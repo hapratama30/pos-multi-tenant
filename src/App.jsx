@@ -10,6 +10,7 @@ import Login from './Login';
 import Register from './Register'; 
 import LandingPage from './LandingPage';
 import SuperAdminLanding from './SuperAdminLanding';
+import LegalPage from './LegalPage';
 import { shouldOpenSuperAdminFromUrl, clearSuperAdminUrl, isSuperAdminUnlocked, lockSuperAdmin } from './utils/landingContent';
 import Dashboard from './components/Dashboard';
 import PosOverlay from './components/PosOverlay';
@@ -32,11 +33,33 @@ import PpobWithdraw from './components/PpobWithdraw';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.substring(1); // remove leading slash
+      const parts = path.split('/');
+      const tabName = parts[0];
+      const validTabs = [
+        'dashboard', 'pos', 'history', 'catalog', 'variants', 'customers',
+        'stock', 'discounts', 'expenses', 'reports', 'employees', 'outlets',
+        'shifts', 'ppob-history', 'ppob-topup', 'ppob-withdraw', 'settings'
+      ];
+      if (validTabs.includes(tabName)) return tabName;
+    }
     return localStorage.getItem('pos_active_tab') || 'dashboard';
   });
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeTriggerModule, setUpgradeTriggerModule] = useState('');
+
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const parts = path.substring(1).split('/');
+      if (parts[0] === 'settings' && parts[1]) {
+        return parts[1];
+      }
+    }
+    return 'menu';
+  });
 
   const triggerUpgrade = (moduleName) => {
     setUpgradeTriggerModule(moduleName || '');
@@ -79,6 +102,13 @@ export default function App() {
 
   const [authPage, setAuthPage] = useState(() => {
     if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path === '/terms' || path === '/terms-and-conditions') return 'terms';
+      if (path === '/refund' || path === '/refund-policy') return 'refund';
+      if (path === '/privacy' || path === '/privacy-policy') return 'privacy';
+      if (path === '/login') return 'login';
+      if (path === '/register') return 'register';
+
       if (window.location.hash === '#platform-admin') return 'superadmin';
       if (shouldOpenSuperAdminFromUrl()) return 'superadmin';
       if (isSuperAdminUnlocked()) return 'superadmin';
@@ -236,18 +266,95 @@ export default function App() {
   }, [transactions, selectedOutletId, outlets]);
 
 
-  // Akses rahasia CMS: https://.../#agrapos-dev atau /dev-cms (tidak ada link publik)
+  // Akses rahasia CMS dan routing halaman hukum (SPA)
   useEffect(() => {
-    const openSuperAdminIfSecretUrl = () => {
+    const handleLocationChange = () => {
       if (shouldOpenSuperAdminFromUrl()) {
         setAuthPage('superadmin');
         clearSuperAdminUrl();
+        return;
+      }
+
+      if (authPage === 'superadmin') {
+        return;
+      }
+
+      const path = window.location.pathname;
+      const pathParts = path.substring(1).split('/');
+      if (pathParts[0] === 'settings' && pathParts[1]) {
+        setActiveSubTab(pathParts[1]);
+      } else {
+        setActiveSubTab('menu');
+      }
+
+      if (path === '/terms' || path === '/terms-and-conditions') {
+        setAuthPage('terms');
+      } else if (path === '/refund' || path === '/refund-policy') {
+        setAuthPage('refund');
+      } else if (path === '/privacy' || path === '/privacy-policy') {
+        setAuthPage('privacy');
+      } else if (path === '/login') {
+        if (currentUser) {
+          setAuthPage('dashboard');
+          setActiveTab('dashboard');
+          window.history.replaceState(null, '', '/dashboard');
+        } else {
+          setAuthPage('login');
+        }
+      } else if (path === '/register') {
+        if (currentUser) {
+          setAuthPage('dashboard');
+          setActiveTab('dashboard');
+          window.history.replaceState(null, '', '/dashboard');
+        } else {
+          setAuthPage('register');
+        }
+      } else if (path === '/' || path === '') {
+        if (currentUser) {
+          setAuthPage('dashboard');
+          setActiveTab('dashboard');
+          window.history.replaceState(null, '', '/dashboard');
+        } else {
+          setAuthPage('landing');
+        }
+      } else {
+        // Ini adalah subpage tab ketika user sudah login (misal /catalog atau /settings/profile)
+        const parts = path.substring(1).split('/');
+        const tabName = parts[0];
+        const validTabs = [
+          'dashboard', 'pos', 'history', 'catalog', 'variants', 'customers',
+          'stock', 'discounts', 'expenses', 'reports', 'employees', 'outlets',
+          'shifts', 'ppob-history', 'ppob-topup', 'ppob-withdraw', 'settings'
+        ];
+        if (validTabs.includes(tabName)) {
+          if (currentUser) {
+            setAuthPage('dashboard'); // Pastikan authPage diset agar login view dirender
+            if (hasPermission(tabName)) {
+              setActiveTab(tabName);
+              localStorage.setItem('pos_active_tab', tabName);
+            } else {
+              setActiveTab('dashboard');
+              localStorage.setItem('pos_active_tab', 'dashboard');
+            }
+          } else {
+            // Jika belum login tapi akses /catalog, arahkan ke login
+            setAuthPage('login');
+            window.history.replaceState(null, '', '/login');
+          }
+        }
       }
     };
-    openSuperAdminIfSecretUrl();
-    window.addEventListener('hashchange', openSuperAdminIfSecretUrl);
-    return () => window.removeEventListener('hashchange', openSuperAdminIfSecretUrl);
-  }, []);
+
+    handleLocationChange();
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('pushstate-changed', handleLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('pushstate-changed', handleLocationChange);
+    };
+  }, [currentUser, authPage]);
 
   const hasPermission = (tabName) => {
     if (!currentUser) return false;
@@ -369,7 +476,7 @@ export default function App() {
     }
     setActiveTab(tabName);
     localStorage.setItem('pos_active_tab', tabName);
-    window.history.pushState({ tab: tabName }, '', '');
+    window.history.pushState({ tab: tabName }, '', `/${tabName}`);
   };
 
   const showNotification = (text) => {
@@ -382,6 +489,8 @@ export default function App() {
     setCurrentUser(userData);
     persistUserSession(userData);
     setActiveTab('dashboard');
+    window.history.pushState(null, '', '/dashboard');
+    window.dispatchEvent(new Event('pushstate-changed'));
     showNotification(`SELAMAT DATANG, ${userData.name.toUpperCase()}!`);
   };
 
@@ -391,7 +500,8 @@ export default function App() {
     setCurrentUser(null);
     localStorage.removeItem('pos_current_user');
     localStorage.removeItem('pos_active_tab');
-    setAuthPage('landing');
+    window.history.pushState(null, '', '/');
+    window.dispatchEvent(new Event('pushstate-changed'));
     setActiveTab('dashboard');
   };
 
@@ -447,29 +557,68 @@ export default function App() {
     );
   }
 
+  // Cek apakah halaman legal sedang aktif (tidak memerlukan login)
+  if (['terms', 'privacy', 'refund'].includes(authPage)) {
+    return (
+      <LegalPage
+        type={authPage}
+        isLoggedIn={!!currentUser}
+        onNavigateToHome={() => {
+          if (currentUser) {
+            window.history.pushState(null, '', '/settings/legal');
+          } else {
+            window.history.pushState(null, '', '/');
+          }
+          window.dispatchEvent(new Event('pushstate-changed'));
+        }}
+      />
+    );
+  }
+
   if (!currentUser) {
     if (authPage === 'landing') {
       return (
         <LandingPage
-          onNavigateToLogin={() => setAuthPage('login')}
-          onNavigateToRegister={() => setAuthPage('register')}
+          onNavigateToLogin={() => {
+            window.history.pushState(null, '', '/login');
+            window.dispatchEvent(new Event('pushstate-changed'));
+          }}
+          onNavigateToRegister={() => {
+            window.history.pushState(null, '', '/register');
+            window.dispatchEvent(new Event('pushstate-changed'));
+          }}
         />
       );
     }
     if (authPage === 'register') {
       return (
         <Register 
-          onNavigateToLogin={() => setAuthPage('login')} 
-          onRegisterSuccess={() => setAuthPage('login')}
-          onNavigateToLanding={() => setAuthPage('landing')}
+          onNavigateToLogin={() => {
+            window.history.pushState(null, '', '/login');
+            window.dispatchEvent(new Event('pushstate-changed'));
+          }} 
+          onRegisterSuccess={() => {
+            window.history.pushState(null, '', '/login');
+            window.dispatchEvent(new Event('pushstate-changed'));
+          }}
+          onNavigateToLanding={() => {
+            window.history.pushState(null, '', '/');
+            window.dispatchEvent(new Event('pushstate-changed'));
+          }}
         />
       );
     }
     return (
       <Login 
         onLoginSuccess={handleLoginSuccess} 
-        onNavigateToRegister={() => setAuthPage('register')}
-        onNavigateToLanding={() => setAuthPage('landing')}
+        onNavigateToRegister={() => {
+          window.history.pushState(null, '', '/register');
+          window.dispatchEvent(new Event('pushstate-changed'));
+        }}
+        onNavigateToLanding={() => {
+          window.history.pushState(null, '', '/');
+          window.dispatchEvent(new Event('pushstate-changed'));
+        }}
       />
     );
   }
@@ -692,13 +841,13 @@ export default function App() {
         boxShadow: '0 4px 15px rgba(255, 255, 255, 0.5)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img src="https://i.ibb.co.com/TqTyqB88/Frame-3.png" alt="Logo" style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.8))' }} />
+          <img src="https://i.ibb.co.com/kVYjtTcc/Frame-2-1.png" alt="Logo" style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.8))' }} />
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, textTransform: 'uppercase', color: 'white' }}>
-              Sistem POS
+              AGRA<span style={{ color: '#fb923c' }}>Pos</span>
             </h1>
             <p style={{ margin: '3px 0 0 0', fontSize: '8px', fontWeight: 800, color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Multi-Tenant Core
+              Multi-Tenant POS
             </p>
           </div>
         </div>
@@ -811,6 +960,7 @@ export default function App() {
             onTriggerUpgrade={triggerUpgrade}
             platformSettings={platformSettings}
             onTriggerFeaturePopup={triggerFeaturePopup}
+            activeSubTab={activeSubTab}
           />
         )}
  
@@ -863,9 +1013,9 @@ export default function App() {
             </button>
           )}
 
-          {/* TOMBOL TENGAH FAB - hanya jika punya izin POS, dan tidak di-hide secara global */}
+          {/* TOMBOL TENGAH FAB - selalu tampil jika tidak di-hide secara global (jika diklik dan tidak ada izin, akan muncul upgrade modal) */}
           <div className="fab-btn-container">
-            {platformSettings?.pos_features?.pos?.status !== 'hidden' && hasPermission('pos') && (
+            {platformSettings?.pos_features?.pos?.status !== 'hidden' && (
               <button onClick={() => handleTabChange('pos')} className="fab-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '36px', height: '36px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

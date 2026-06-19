@@ -15,7 +15,11 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
   const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [plans, setPlans] = useState([]);
-  const [legalView, setLegalView] = useState(null); // 'terms', 'privacy', 'refund'
+  
+  const navigateToLegal = (type) => {
+    window.history.pushState(null, '', `/${type}`);
+    window.dispatchEvent(new Event('pushstate-changed'));
+  };
 
   const reloadContent = useCallback(async () => {
     setLoading(true);
@@ -69,105 +73,6 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans overflow-x-hidden">
-
-      {/* ── LEGAL MODAL ── */}
-      {legalView && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl max-h-[80vh] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
-                {legalView === 'terms' ? 'Syarat & Ketentuan' : legalView === 'privacy' ? 'Kebijakan Privasi' : 'Kebijakan Refund'}
-              </h2>
-              <button 
-                onClick={() => setLegalView(null)}
-                className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-              >
-                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-slate-600 leading-relaxed space-y-6">
-              {legalView === 'terms' && (
-                <div className="space-y-4 text-sm">
-                  <p className="font-bold text-slate-800 text-lg">Ketentuan Penggunaan Layanan AGRAPos</p>
-                  <p>Selamat datang di AGRAPos. Dengan menggunakan layanan kami, Anda menyetujui ketentuan berikut:</p>
-                  <div className="space-y-4">
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">1. Registrasi Akun</h4>
-                      <p>Anda wajib memberikan informasi yang akurat dan menjaga kerahasiaan password akun Anda. Aktivitas yang terjadi di akun Anda adalah tanggung jawab Anda sepenuhnya.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">2. Penggunaan Layanan</h4>
-                      <p>Layanan AGRAPos digunakan untuk pencatatan transaksi, manajemen stok, dan operasional bisnis lainnya. Dilarang menggunakan layanan untuk aktivitas ilegal atau melanggar hukum di Indonesia.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">3. Biaya & Langganan</h4>
-                      <p>Layanan tersedia dalam paket gratis dan berbayar. Paket berbayar akan ditagihkan sesuai periode yang dipilih. Kegagalan pembayaran dapat mengakibatkan pembatasan akses fitur.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">4. Perubahan Ketentuan</h4>
-                      <p>AGRAPos berhak mengubah syarat dan ketentuan ini sewaktu-waktu. Perubahan akan diinformasikan melalui website atau email resmi.</p>
-                    </section>
-                  </div>
-                </div>
-              )}
-              {legalView === 'privacy' && (
-                <div className="space-y-4 text-sm">
-                  <p className="font-bold text-slate-800 text-lg">Kebijakan Privasi Data Pengguna</p>
-                  <p>Privasi Anda adalah prioritas kami. Berikut adalah kebijakan pengelolaan data di AGRAPos:</p>
-                  <div className="space-y-4">
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">1. Data yang Dikumpulkan</h4>
-                      <p>Kami mengumpulkan data identitas (nama, email, nomor HP), data bisnis (nama toko, alamat), dan data transaksi untuk keperluan fungsional aplikasi.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">2. Penggunaan Data</h4>
-                      <p>Data digunakan untuk memproses transaksi, menyediakan laporan analitik, dan memberikan dukungan teknis kepada pengguna.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">3. Keamanan Data</h4>
-                      <p>Kami menggunakan enkripsi dan protokol keamanan standar industri (SSL/TLS) untuk melindungi data Anda dari akses yang tidak sah.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">4. Berbagi Data</h4>
-                      <p>Kami tidak akan menjual atau memberikan data Anda kepada pihak ketiga untuk keperluan pemasaran tanpa izin Anda.</p>
-                    </section>
-                  </div>
-                </div>
-              )}
-              {legalView === 'refund' && (
-                <div className="space-y-4 text-sm">
-                  <p className="font-bold text-slate-800 text-lg">Kebijakan Pengembalian Dana (Refund)</p>
-                  <p>Mohon baca kebijakan pembatalan dan refund kami dengan seksama:</p>
-                  <div className="space-y-4">
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">1. Langganan SaaS</h4>
-                      <p>Pembayaran langganan paket (Pro/Enterprise) yang sudah aktif tidak dapat di-refund. Anda dapat membatalkan langganan kapan saja untuk periode berikutnya.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">2. Saldo PPOB / Deposit</h4>
-                      <p>Deposit saldo yang sudah berhasil diproses tidak dapat ditarik kembali ke rekening bank, namun dapat digunakan sepenuhnya untuk transaksi produk PPOB di dalam sistem.</p>
-                    </section>
-                    <section>
-                      <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-1">3. Kesalahan Transaksi</h4>
-                      <p>Jika terjadi kesalahan sistem yang mengakibatkan double billing atau kegagalan transaksi namun saldo terpotong, pengguna wajib melapor dalam 1x24 jam untuk proses investigasi dan pengembalian saldo.</p>
-                    </section>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-              <button 
-                onClick={() => setLegalView(null)}
-                className="px-8 py-3 bg-slate-800 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-700 transition-colors shadow-lg"
-              >
-                Saya Mengerti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── NAVBAR ── */}
       <header
@@ -635,7 +540,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Support</p>
-                    <p className="text-sm font-bold text-slate-800">{contact?.email || 'support@agrapos.dev'}</p>
+                    <p className="text-sm font-bold text-slate-800">{contact?.email || 'agratechnology90@gmail.com'}</p>
                   </div>
                 </div>
                 
@@ -751,16 +656,16 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
             <div>
               <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6">Bantuan</h4>
               <ul className="space-y-4">
-                <li><button onClick={() => setLegalView('terms')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Syarat & Ketentuan</button></li>
-                <li><button onClick={() => setLegalView('privacy')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Kebijakan Privasi</button></li>
-                <li><button onClick={() => setLegalView('refund')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Kebijakan Refund</button></li>
+                <li><button onClick={() => navigateToLegal('terms')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Syarat & Ketentuan</button></li>
+                <li><button onClick={() => navigateToLegal('privacy')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Kebijakan Privasi</button></li>
+                <li><button onClick={() => navigateToLegal('refund')} className="text-xs font-bold text-slate-500 hover:text-teal-600 transition-colors uppercase tracking-wider">Kebijakan Refund</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6">Kontak</h4>
               <ul className="space-y-4">
-                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'support@agrapos.dev'}</li>
+                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'agratechnology90@gmail.com'}</li>
                 <li className="text-xs font-bold text-slate-500">{contact?.phone || '+62 856-9566-0902'}</li>
               </ul>
             </div>

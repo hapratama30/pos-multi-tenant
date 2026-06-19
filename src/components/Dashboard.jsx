@@ -383,9 +383,7 @@ export default function Dashboard({ transactions = [], onNavigate, currentUser, 
             <h1 className="text-2xl md:text-4xl font-black tracking-tight drop-shadow-sm mt-1">
               Halo, {namaUserLogin}! 👋
             </h1>
-            <p className="text-teal-100 text-[10px] md:text-xs font-semibold uppercase tracking-wider mt-1 opacity-80">
-              Sistem POS Multi-Tenant Berjalan Sempurna
-            </p>
+
           </div>
 
           <div className="hidden md:block bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 text-right">

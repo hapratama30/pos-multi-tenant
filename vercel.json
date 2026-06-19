@@ -19,6 +19,10 @@
       "dest": "server.mjs"
     },
     {
+      "src": "/(terms|refund|privacy|login|register|terms-and-conditions|refund-policy|privacy-policy|dashboard|pos|history|catalog|variants|customers|stock|discounts|expenses|reports|employees|outlets|shifts|ppob-history|ppob-topup|ppob-withdraw|settings|settings/.*)",
+      "dest": "/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }

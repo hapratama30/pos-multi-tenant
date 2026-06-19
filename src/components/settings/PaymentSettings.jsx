@@ -355,6 +355,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       // 1. Simpan settings boolean channel pembayaran ke payment_settings
       const { error: settingsErr } = await supabase.from('payment_settings').upsert({
         tenant_id: tenantId,
+        outlet_id: selectedOutletId,
         payment_cash_enabled: methods.cash,
         payment_qris_enabled: methods.qris,
         payment_va_enabled: methods.virtual_account,
@@ -363,7 +364,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         qris_nmid: qrisNmid,
         qris_tid: qrisTid,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'tenant_id' });
+      }, { onConflict: 'tenant_id,outlet_id' });
       if (settingsErr) throw settingsErr;
 
       // 2. Simpan daftar rekening (delete yang lama, insert yang baru)
@@ -419,12 +420,13 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           .upsert(
             {
               tenant_id: tenantId,
+              outlet_id: selectedOutletId,
               xendit_merchant_id: accId,
               xendit_va_status: 'Diproses',
               xendit_qris_status: 'Diproses',
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'tenant_id' }
+            { onConflict: 'tenant_id,outlet_id' }
           );
       }
 
@@ -451,11 +453,12 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       const trimmedId = manualAccountId.trim();
       await supabase.from('payment_settings').upsert({
         tenant_id: tenantId,
+        outlet_id: selectedOutletId,
         xendit_merchant_id: trimmedId,
         xendit_va_status: 'Diproses',
         xendit_qris_status: 'Diproses',
         updated_at: new Date().toISOString()
-      }, { onConflict: 'tenant_id' });
+      }, { onConflict: 'tenant_id,outlet_id' });
 
       setXenditAccountId(trimmedId);
       setXenditVaStatus('Diproses');
@@ -476,13 +479,14 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
     try {
       await supabase.from('payment_settings').upsert({
         tenant_id: tenantId,
+        outlet_id: selectedOutletId,
         xendit_merchant_id: null,
         xendit_va_status: 'Belum Terdaftar',
         xendit_qris_status: 'Belum Terdaftar',
         payment_qris_enabled: false,
         payment_va_enabled: false,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'tenant_id' });
+      }, { onConflict: 'tenant_id,outlet_id' });
 
       setXenditAccountId('');
       setXenditVaStatus('Belum Terdaftar');
@@ -759,7 +763,26 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                       type="checkbox" 
                       checked={!!methods[m.key] && !isItemLocked} 
                       onChange={() => {
-                        if (!isItemLocked) toggleMethod(m.key);
+                        if (isItemLocked) return;
+                        if (m.key === 'qris' && !methods.qris && xenditQrisStatus !== 'Aktif') {
+                          setAlertModal({
+                            show: true,
+                            title: '⚠️ QRIS Belum Aktif',
+                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "QRIS Xendit" sebelum mengaktifkan channel kasir ini.',
+                            type: 'error'
+                          });
+                          return;
+                        }
+                        if (m.key === 'virtual_account' && !methods.virtual_account && xenditVaStatus !== 'Aktif') {
+                          setAlertModal({
+                            show: true,
+                            title: '⚠️ Virtual Account Belum Aktif',
+                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "Virtual Account" sebelum mengaktifkan channel kasir ini.',
+                            type: 'error'
+                          });
+                          return;
+                        }
+                        toggleMethod(m.key);
                       }} 
                       className="sr-only" 
                       disabled={isItemLocked}

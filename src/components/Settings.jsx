@@ -132,13 +132,25 @@ function LogoutConfirmModal({ onConfirm, onCancel, userName }) {
 // =====================================================================
 // KOMPONEN SETTINGS UTAMA
 // =====================================================================
-export default function Settings({ tenantId, currentUser, onLogout, outlets = [], selectedOutletId, onOutletChange, onNavigate, onTriggerUpgrade, platformSettings, onTriggerFeaturePopup }) {
-  const [activeTab, setActiveTab] = useState('menu');
+export default function Settings({ tenantId, currentUser, onLogout, outlets = [], selectedOutletId, onOutletChange, onNavigate, onTriggerUpgrade, platformSettings, onTriggerFeaturePopup, activeSubTab }) {
+  const [activeTab, setActiveTab] = useState(activeSubTab || 'menu');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [pendingOutletId, setPendingOutletId] = useState(null);
+  const [openLegalDoc, setOpenLegalDoc] = useState(null); // Accordion state
 
   const [livePlanId, setLivePlanId] = useState(currentUser?.plan_id || currentUser?.tenants?.plan_id || currentUser?.tenant?.plan_id || 'free');
   const [liveModules, setLiveModules] = useState(currentUser?.enabled_modules || currentUser?.tenants?.enabled_modules || currentUser?.tenant?.enabled_modules || []);
+
+  React.useEffect(() => {
+    if (activeSubTab) {
+      setActiveTab(activeSubTab);
+    }
+  }, [activeSubTab]);
+
+  const handleBack = () => {
+    window.history.pushState(null, '', '/settings');
+    window.dispatchEvent(new Event('pushstate-changed'));
+  };
 
   React.useEffect(() => {
     if (!tenantId) return;
@@ -192,49 +204,138 @@ export default function Settings({ tenantId, currentUser, onLogout, outlets = []
     { id: 'printer', title: 'Setting Printer Thermal', desc: 'Hubungkan printer struk kasir bluetooth, pilih ukuran kertas 58mm / 80mm', icon: '🖨️' },
     { id: 'payments', title: 'Metode Pembayaran & Xendit', desc: 'Registrasi QRIS mandiri & Virtual Account otomatis via Xendit Gateway', icon: '💳' },
     { id: 'outlets', title: 'Cabang / Outlet', desc: 'Kelola multi-cabang untuk laporan per lokasi', icon: '🏢' },
-    { id: 'shifts', title: 'Shift Kasir', desc: 'Kelola saldo laci, modal, dan rekonsiliasi kas', icon: '💰' }
+    { id: 'shifts', title: 'Shift Kasir', desc: 'Kelola saldo laci, modal, dan rekonsiliasi kas', icon: '💰' },
+    { id: 'legal', title: 'Kebijakan Hukum (Legal)', desc: 'Buka dokumen resmi Syarat & Ketentuan, Privasi, dan Refund AGRAPos', icon: '⚖️' }
   ];
 
   if (activeTab === 'staff') {
     if (!checkSettingModuleAccess('staff')) {
-      setActiveTab('menu');
+      handleBack();
       onTriggerUpgrade && onTriggerUpgrade('staff');
       return null;
     }
-    return <StaffManager currentUser={currentUser} selectedOutletId={selectedOutletId} onBack={() => setActiveTab('menu')} />;
+    return <StaffManager currentUser={currentUser} selectedOutletId={selectedOutletId} onBack={handleBack} />;
   }
   if (activeTab === 'profile') {
-    return <ProfileSettings currentUser={currentUser} onBack={() => setActiveTab('menu')} />;
+    return <ProfileSettings currentUser={currentUser} onBack={handleBack} />;
   }
   if (activeTab === 'business') {
     if (!selectedOutletId && outlets.length > 0) {
       alert('Silakan pilih cabang / outlet secara spesifik terlebih dahulu untuk mengedit pengaturan.');
-      setActiveTab('menu');
+      handleBack();
       return null;
     }
-    return <BusinessSettings tenantId={tenantId} selectedOutletId={selectedOutletId} onBack={() => setActiveTab('menu')} />;
+    return <BusinessSettings tenantId={tenantId} selectedOutletId={selectedOutletId} onBack={handleBack} />;
   }
   if (activeTab === 'printer') {
     if (!selectedOutletId && outlets.length > 0) {
       alert('Silakan pilih cabang / outlet secara spesifik terlebih dahulu untuk mengedit pengaturan.');
-      setActiveTab('menu');
+      handleBack();
       return null;
     }
-    return <PrinterSettings tenantId={tenantId} selectedOutletId={selectedOutletId} onBack={() => setActiveTab('menu')} />;
+    return <PrinterSettings tenantId={tenantId} selectedOutletId={selectedOutletId} onBack={handleBack} />;
   }
   if (activeTab === 'payments') {
     if (!selectedOutletId && outlets.length > 0) {
       alert('Silakan pilih cabang / outlet secara spesifik terlebih dahulu untuk mengedit pengaturan.');
-      setActiveTab('menu');
+      handleBack();
       return null;
     }
     return (
       <PaymentSettings 
         tenantId={tenantId} 
         selectedOutletId={selectedOutletId} 
-        onBack={() => setActiveTab('menu')} 
+        onBack={handleBack} 
         onTriggerUpgrade={onTriggerUpgrade}
       />
+    );
+  }
+
+  if (activeTab === 'legal') {
+    const navigateToPage = (path) => {
+      window.history.pushState(null, '', path);
+      window.dispatchEvent(new Event('pushstate-changed'));
+    };
+
+    return (
+      <div className="pb-32 bg-[#F8FAFC] min-h-screen font-sans">
+        <div className="px-4 sm:px-6 pt-6 space-y-6">
+          {/* BACK BUTTON */}
+          <div>
+            <button 
+              onClick={handleBack} 
+              className="flex items-center gap-2 bg-white border border-slate-200 px-6 py-3.5 rounded-[1.5rem] shadow-sm text-[10px] font-black text-slate-800 active:scale-95 transition-all uppercase tracking-widest hover:border-slate-300 cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              Kembali
+            </button>
+          </div>
+
+          {/* PAGE HEADER */}
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-xl sm:text-3xl font-black text-slate-950 tracking-tight leading-tight uppercase">
+                Kebijakan Hukum & Legal
+              </h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                Buka dokumen resmi Syarat & Ketentuan, Kebijakan Privasi, dan Kebijakan Refund AGRAPos
+              </p>
+            </div>
+            <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-2xl font-mono text-xs text-slate-700 font-black shrink-0 shadow-sm">
+              TENANT: {tenantId}
+            </div>
+          </header>
+
+          {/* INFO BADGE */}
+          <div className="flex items-center gap-2.5 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
+            <span className="text-base">⚖️</span>
+            <p className="text-[10px] font-black text-teal-700">
+              Pilih salah satu tombol di bawah ini untuk melihat dokumen hukum resmi terkait penggunaan platform AGRAPos secara lengkap.
+            </p>
+          </div>
+
+          {/* POLICY LIST */}
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200/60 shadow-sm space-y-3">
+            {/* Syarat & Ketentuan Button */}
+            <button
+              onClick={() => navigateToPage('/terms')}
+              className="w-full p-5 bg-slate-50 border border-slate-200/60 rounded-2xl flex items-center justify-between hover:bg-teal-50 hover:border-teal-200/80 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer text-left group"
+            >
+              <div>
+                <span className="block font-black text-[11px] uppercase tracking-wider text-slate-700 group-hover:text-teal-600 transition-colors">📄 Syarat & Ketentuan Layanan</span>
+                <span className="block text-[10px] text-slate-400 font-semibold mt-1">Ketentuan penggunaan platform, pendaftaran, dan biaya langganan</span>
+              </div>
+              <span className="text-slate-400 font-bold group-hover:translate-x-1 transition-transform">▶</span>
+            </button>
+
+            {/* Kebijakan Privasi Button */}
+            <button
+              onClick={() => navigateToPage('/privacy')}
+              className="w-full p-5 bg-slate-50 border border-slate-200/60 rounded-2xl flex items-center justify-between hover:bg-teal-50 hover:border-teal-200/80 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer text-left group"
+            >
+              <div>
+                <span className="block font-black text-[11px] uppercase tracking-wider text-slate-700 group-hover:text-teal-600 transition-colors">🛡️ Kebijakan Privasi Data</span>
+                <span className="block text-[10px] text-slate-400 font-semibold mt-1">Bagaimana data personal, toko, dan transaksi Anda kami lindungi</span>
+              </div>
+              <span className="text-slate-400 font-bold group-hover:translate-x-1 transition-transform">▶</span>
+            </button>
+
+            {/* Kebijakan Refund Button */}
+            <button
+              onClick={() => navigateToPage('/refund')}
+              className="w-full p-5 bg-slate-50 border border-slate-200/60 rounded-2xl flex items-center justify-between hover:bg-teal-50 hover:border-teal-200/80 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer text-left group"
+            >
+              <div>
+                <span className="block font-black text-[11px] uppercase tracking-wider text-slate-700 group-hover:text-teal-600 transition-colors">💰 Kebijakan Refund & Deposit</span>
+                <span className="block text-[10px] text-slate-400 font-semibold mt-1">Kebijakan pembatalan langganan dan pengembalian saldo PPOB</span>
+              </div>
+              <span className="text-slate-400 font-bold group-hover:translate-x-1 transition-transform">▶</span>
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -413,7 +514,8 @@ export default function Settings({ tenantId, currentUser, onLogout, outlets = []
                       if (['outlets', 'shifts'].includes(item.id)) {
                         onNavigate && onNavigate(item.id);
                       } else {
-                        setActiveTab(item.id);
+                        window.history.pushState(null, '', `/settings/${item.id}`);
+                        window.dispatchEvent(new Event('pushstate-changed'));
                       }
                     }}
                     className={`flex flex-col justify-between text-left bg-white border rounded-3xl p-4 md:p-6 transition-all duration-300 ease-out group min-h-[160px] md:min-h-[190px] ${isRestricted

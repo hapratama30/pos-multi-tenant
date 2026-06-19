@@ -65,7 +65,7 @@ export const DEFAULT_LANDING_CONTENT = {
     copyright: 'AGRAPos Platform',
   },
   contact: {
-    email: 'support@agrapos.dev',
+    email: 'agratechnology90@gmail.com',
     phone: '+62 856-9566-0902',
     address: 'Jl. Raya Bogor No. 123, Jakarta Timur, Indonesia',
     whatsapp: '6285695660902',
