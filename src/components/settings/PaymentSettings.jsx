@@ -223,32 +223,40 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
 
   useEffect(() => {
     if (xenditAccountId && xenditAccountId !== 'ID-AGRAPOS-BYPASS') {
-      getXenditStaticQR({ tenantId })
-        .then(res => {
-          if (res.success && res.qrString) {
-            setStaticQrString(res.qrString);
-          }
-        })
-        .catch(err => {
-          console.error('Error fetching static QRIS string:', err);
-        });
+      if (xenditQrisStatus === 'Aktif') {
+        getXenditStaticQR({ tenantId })
+          .then(res => {
+            if (res.success && res.qrString) {
+              setStaticQrString(res.qrString);
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching static QRIS string:', err);
+          });
+      } else {
+        setStaticQrString('');
+      }
 
-      setLoadingVA(true);
-      getXenditFixedVAs({ tenantId })
-        .then(res => {
-          if (res.success && res.vas) {
-            setFixedVAs(res.vas);
-          }
-        })
-        .catch(err => {
-          console.error('Error fetching fixed VAs:', err);
-        })
-        .finally(() => setLoadingVA(false));
+      if (xenditVaStatus === 'Aktif') {
+        setLoadingVA(true);
+        getXenditFixedVAs({ tenantId })
+          .then(res => {
+            if (res.success && res.vas) {
+              setFixedVAs(res.vas);
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching fixed VAs:', err);
+          })
+          .finally(() => setLoadingVA(false));
+      } else {
+        setFixedVAs([]);
+      }
     } else {
       setStaticQrString('');
       setFixedVAs([]);
     }
-  }, [xenditAccountId, tenantId]);
+  }, [xenditAccountId, xenditQrisStatus, xenditVaStatus, tenantId]);
 
   // ─── FETCH ────────────────────────────────────────────────────────────────
   const fetchPaymentData = useCallback(async () => {
@@ -472,7 +480,12 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   };
 
   const handleDisconnectXendit = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin memutuskan hubungan akun Xendit Anda?')) return;
+    const isLinkedOnly = xenditVaStatus !== 'Aktif';
+    const confirmMsg = isLinkedOnly 
+      ? 'Apakah Anda yakin ingin membatalkan pendaftaran ini untuk melakukan registrasi ulang?' 
+      : 'Apakah Anda yakin ingin memutuskan hubungan akun Xendit Anda?';
+
+    if (!window.confirm(confirmMsg)) return;
     setSaving(true);
     setMsg(null);
     try {
@@ -491,9 +504,10 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setXenditVaStatus('Belum Terdaftar');
       setXenditQrisStatus('Belum Terdaftar');
       setMethods(prev => ({ ...prev, qris: false, virtual_account: false }));
-      setMsg({ type: 'success', text: 'Koneksi Xendit berhasil diputuskan.' });
+      const successText = isLinkedOnly ? 'Pendaftaran berhasil dibatalkan. Anda dapat melakukan pendaftaran ulang sekarang.' : 'Koneksi Xendit berhasil diputuskan.';
+      setMsg({ type: 'success', text: successText });
     } catch (err) {
-      setMsg({ type: 'error', text: err.message || 'Gagal memutuskan koneksi.' });
+      setMsg({ type: 'error', text: err.message || 'Gagal mereset koneksi.' });
     } finally {
       setSaving(false);
     }
@@ -847,6 +861,11 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                       Xendit telah mengirim email undangan verifikasi ke <span className="font-mono text-orange-700 font-black">{emailBisnis || 'email operasional Anda'}</span>. Silakan periksa folder Inbox/Spam email tersebut untuk menyetujui undangan KYC.
                     </div>
                   )}
+                  
+                  <div className="bg-white/50 p-3 rounded-xl border border-orange-200/50 text-[10px] text-orange-800 font-bold leading-relaxed">
+                    💡 <b>Tips jika email belum masuk:</b> Jika email undangan tidak masuk dalam beberapa menit, silakan tekan tombol <b>Batal / Daftar Ulang</b> di bawah ini untuk mereset dan mendaftar kembali menggunakan alamat email yang benar.
+                  </div>
+
                   <div className="flex flex-col sm:flex-row gap-3">
                     {activationUrl && (
                       <a href={activationUrl} target="_blank" rel="noreferrer"
@@ -856,7 +875,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                     )}
                     <button type="button" onClick={handleDisconnectXendit}
                       className="px-4 py-3 bg-rose-600 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-rose-700 transition-all active:scale-95 flex-1">
-                      🔌 Putuskan Hubungan
+                      ❌ Batal / Daftar Ulang
                     </button>
                   </div>
                 </div>
