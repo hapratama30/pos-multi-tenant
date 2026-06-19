@@ -723,7 +723,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
               {[
                 { key: 'cash', icon: '💵', label: 'Uang Tunai (Cash)', desc: 'Kasir input & hitung kembalian manual' },
                 { key: 'qris', icon: '📱', label: 'QRIS (via Xendit)', desc: 'QR Code otomatis — konfigurasi di tab QRIS', badge: xenditQrisStatus, isPremium: true },
-                { key: 'virtual_account', icon: '🏦', label: 'Virtual Account', desc: `Transfer ke nomor VA — ${vaNumbers.length} VA dikonfigurasi`, isPremium: true },
+                { key: 'virtual_account', icon: '🏦', label: 'Virtual Account', desc: `Transfer ke nomor VA — ${vaNumbers.length} VA dikonfigurasi`, badge: xenditVaStatus, isPremium: true },
                 { key: 'transfer_bank', icon: '💳', label: 'Transfer Bank Manual', desc: `Rekening biasa — ${transferBanks.length} rekening dikonfigurasi` },
                 { key: 'ewallet', icon: '📲', label: 'e-Wallet (GoPay / Dana / OVO dll.)', desc: `${ewalletNumbers.length} nomor dikonfigurasi` },
               ].map(m => {
