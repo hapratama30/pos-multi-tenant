@@ -30,8 +30,7 @@ const EWALLET_LIST = ['GoPay', 'Dana', 'OVO', 'ShopeePay', 'LinkAja', 'Jenius', 
 
 const TABS = [
   { key: 'saklar', label: '⚙️ Channel Aktif', color: 'teal' },
-  { key: 'qris', label: '📱 QRIS Xendit', color: 'emerald' },
-  { key: 'va', label: '🏦 Virtual Account', color: 'blue' },
+  { key: 'xendit', label: '⚡ QRIS & VA Xendit', color: 'emerald' },
   { key: 'transfer', label: '💳 Transfer Bank', color: 'indigo' },
   { key: 'ewallet', label: '📲 e-Wallet', color: 'purple' },
   { key: 'settlements', label: '💰 Pencairan QRIS & VA', color: 'orange' },
@@ -684,7 +683,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         {/* TABS */}
         <div className="flex gap-2 flex-wrap">
           {TABS.map(tab => {
-            const isTabLocked = ['qris', 'va', 'settlements'].includes(tab.key) && !hasXenditModule;
+            const isTabLocked = ['xendit', 'settlements'].includes(tab.key) && !hasXenditModule;
             return (
               <button
                 key={tab.key}
@@ -768,7 +767,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                           setAlertModal({
                             show: true,
                             title: '⚠️ QRIS Belum Aktif',
-                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "QRIS Xendit" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;
@@ -777,7 +776,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                           setAlertModal({
                             show: true,
                             title: '⚠️ Virtual Account Belum Aktif',
-                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "Virtual Account" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;
@@ -799,13 +798,13 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           </div>
         )}
         {/* ══════════════════════════════════════════════
-            TAB: QRIS XENDIT
+            TAB: XENDIT (QRIS & VA)
         ══════════════════════════════════════════════ */}
-        {activeTab === 'qris' && (
-          <div className="space-y-4">
+        {activeTab === 'xendit' && (
+          <div className="space-y-6 animate-fadeIn">
             {/* Status Card */}
             <div className="pay-card space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">📱 QRIS via Xendit — Status Akun</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">⚡ INTEGRASI XENDIT — Status Akun</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div>
@@ -814,11 +813,11 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                 </div>
                 <div>
                   <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Status QRIS</span>
-                  <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditQrisStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{xenditQrisStatus}</span>
+                  <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditQrisStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{xenditQrisStatus}</span>
                 </div>
                 <div>
                   <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Status VA Xendit</span>
-                  <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditVaStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{xenditVaStatus}</span>
+                  <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditVaStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{xenditVaStatus}</span>
                 </div>
               </div>
 
@@ -870,23 +869,29 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                     <span className="text-3xl">✅</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-3">
-                        <h4 className="text-xs font-black text-emerald-800 uppercase">Xendit QRIS Siap Pakai!</h4>
+                        <h4 className="text-xs font-black text-emerald-800 uppercase">Xendit QRIS & VA Siap Pakai!</h4>
                         <button type="button" onClick={handleDisconnectXendit}
                           className="px-3 py-1.5 bg-rose-600 text-white text-[8px] font-black uppercase rounded-lg hover:bg-rose-700 transition-all active:scale-95">
                           🔌 Putuskan Hubungan
                         </button>
                       </div>
                       <p className="text-[11px] text-emerald-600 font-bold mt-0.5">
-                        Dana QRIS otomatis routing ke dompet ID: <span className="font-mono">{xenditAccountId || '—'}</span>
+                        Dana transaksi otomatis routing ke dompet ID: <span className="font-mono">{xenditAccountId || '—'}</span>
                       </p>
                     </div>
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Registered -> Show Fixed QRIS Card */}
-              {xenditAccountId && (
-                <div className="space-y-4 border-t pt-4 border-slate-100">
+            {/* Config & Tampilan QRIS & VA side by side / sections */}
+            {xenditAccountId && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                
+                {/* COLUMN 1: QRIS CONFIG & PREVIEW */}
+                <div className="pay-card space-y-4 animate-fadeIn">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">📱 Pengaturan QRIS Toko</p>
+                  
                   {/* NMID & TID Input */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="space-y-2">
@@ -950,106 +955,90 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                     {saving ? '⏳ Menyimpan...' : '💾 Simpan Konfigurasi QRIS'}
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* ══════════════════════════════════════════════
-            TAB: VIRTUAL ACCOUNT
-        ══════════════════════════════════════════════ */}
-        {activeTab === 'va' && (
-          <div className="pay-card space-y-6">
-
-            {/* 1. KONEKSI KE PENDAFTARAN XENDIT */}
-            {xenditAccountId ? (
-              <div className="bg-gradient-to-br from-blue-50 to-teal-50/20 border border-blue-200/60 p-5 rounded-[2rem] space-y-4">
-                <div className="flex justify-between items-center flex-wrap gap-2">
-                  <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
-                    🏦 Nomor Virtual Account Xendit (Fixed VA)
-                  </h4>
-                  <span className={`text-[8px] px-2 py-0.5 font-black uppercase rounded border ${xenditVaStatus === 'Aktif' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                    {xenditVaStatus === 'Aktif' ? 'Xendit Fixed (Aktif)' : 'Xendit Fixed (Diproses / Simulasi)'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  Nomor Virtual Account ini bersifat tetap (fixed) untuk toko Anda. Pelanggan dapat transfer ke nomor-nomor di bawah ini kapan saja:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {loadingVA ? (
-                    <div className="col-span-1 sm:col-span-2 text-center p-4">
-                      <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat VA Xendit...</span>
+                {/* COLUMN 2: VIRTUAL ACCOUNT CONFIG */}
+                <div className="pay-card space-y-6 animate-fadeIn">
+                  {/* 1. XENDIT FIXED VA */}
+                  <div className="bg-gradient-to-br from-blue-50 to-teal-50/20 border border-blue-200/60 p-5 rounded-[2rem] space-y-4">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
+                        🏦 Nomor Virtual Account Xendit (Fixed VA)
+                      </h4>
+                      <span className={`text-[8px] px-2 py-0.5 font-black uppercase rounded border ${xenditVaStatus === 'Aktif' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {xenditVaStatus === 'Aktif' ? 'Xendit Fixed (Aktif)' : 'Xendit Fixed (Diproses / Simulasi)'}
+                      </span>
                     </div>
-                  ) : fixedVAs.length > 0 ? (
-                    fixedVAs.map(v => (
-                      <div key={v.bank_code} className="bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 shadow-sm hover:shadow transition-all">
-                        <div>
-                          <span className="text-[9px] font-black text-blue-700 uppercase tracking-wider block">{v.bank_code} VA</span>
-                          <span className="font-mono text-xs font-black text-slate-800 tracking-wider">{v.account_number}</span>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      Nomor Virtual Account ini bersifat tetap (fixed) untuk toko Anda. Pelanggan dapat transfer ke nomor-nomor di bawah ini kapan saja:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {loadingVA ? (
+                        <div className="col-span-1 sm:col-span-2 text-center p-4">
+                          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat VA Xendit...</span>
                         </div>
-                        <span className="text-[8px] px-2 py-0.5 font-black uppercase rounded bg-blue-50 text-blue-700 border border-blue-100">Xendit Fixed</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-1 sm:col-span-2 text-center p-4">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada VA aktif</span>
+                      ) : fixedVAs.length > 0 ? (
+                        fixedVAs.map(v => (
+                          <div key={v.bank_code} className="bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 shadow-sm hover:shadow transition-all">
+                            <div>
+                              <span className="text-[9px] font-black text-blue-700 uppercase tracking-wider block">{v.bank_code} VA</span>
+                              <span className="font-mono text-xs font-black text-slate-800 tracking-wider">{v.account_number}</span>
+                            </div>
+                            <span className="text-[8px] px-2 py-0.5 font-black uppercase rounded bg-blue-50 text-blue-700 border-blue-100">Xendit Fixed</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-1 sm:col-span-2 text-center p-4">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada VA aktif</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  {/* 2. REKENING MANUAL (OPSIONAL / FALLBACK) */}
+                  <div className="border-t border-slate-100 pt-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🏦 Rekening VA Manual (Opsional)</p>
+                        <p className="text-[11px] font-bold text-slate-400 mt-1">
+                          Anda juga dapat memasukkan nomor VA manual lainnya di bawah ini jika diperlukan.
+                        </p>
+                      </div>
+                      <button onClick={addVA}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-600 text-white text-[10px] font-black uppercase rounded-2xl hover:brightness-105 transition-all shrink-0 shadow-md shadow-teal-100 pay-row-add">
+                        <IconPlus /> Tambah VA Manual
+                      </button>
+                    </div>
+
+                    {vaNumbers.length === 0
+                      ? <EmptySlot icon="🏦" label="Belum ada nomor VA manual" hint='Klik "+ Tambah VA Manual" jika ada rekening manual' />
+                      : (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-[20px_1fr_1fr_1fr_36px] gap-2 px-3">
+                            <div />
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Bank</span>
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Nomor VA</span>
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Atas Nama</span>
+                            <div />
+                          </div>
+                          {vaNumbers.map((item, i) => (
+                            <PayRow key={i} item={item} index={i}
+                              onUpdate={updateVA} onRemove={removeVA}
+                              selectKey="bank" selectOptions={BANK_LIST} />
+                          ))}
+                        </div>
+                      )
+                    }
+                  </div>
+
+                  <button onClick={saveAll} disabled={saving}
+                    className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                    {saving ? '⏳ Menyimpan...' : '💾 Simpan Data Virtual Account'}
+                  </button>
                 </div>
-              </div>
-            ) : (
-              <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-4">
-                <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider flex items-center gap-2">
-                  ⚠️ Virtual Account Xendit Belum Aktif
-                </h4>
-                <p className="text-[10px] text-amber-900 font-medium leading-relaxed mb-2">
-                  Akun Xendit Anda belum terintegrasi/aktif. Silakan lakukan pendaftaran merchant Xendit atau aktifkan simulator bypass di bawah ini agar Virtual Account Xendit otomatis ini muncul.
-                </p>
-                {renderXenditRegistrationForm()}
+
               </div>
             )}
-
-            {/* 2. REKENING MANUAL (OPSIONAL / FALLBACK) */}
-            <div className="border-t border-slate-100 pt-5 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🏦 Rekening VA Manual (Opsional)</p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1">
-                    Anda juga dapat memasukkan nomor VA manual lainnya di bawah ini jika diperlukan.
-                  </p>
-                </div>
-                <button onClick={addVA}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-600 text-white text-[10px] font-black uppercase rounded-2xl hover:brightness-105 transition-all shrink-0 shadow-md shadow-teal-100 pay-row-add">
-                  <IconPlus /> Tambah VA Manual
-                </button>
-              </div>
-
-              {vaNumbers.length === 0
-                ? <EmptySlot icon="🏦" label="Belum ada nomor VA manual" hint='Klik "+ Tambah VA Manual" jika ada rekening manual' />
-                : (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-[20px_1fr_1fr_1fr_36px] gap-2 px-3">
-                      <div />
-                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Bank</span>
-                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Nomor VA</span>
-                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">Atas Nama</span>
-                      <div />
-                    </div>
-                    {vaNumbers.map((item, i) => (
-                      <PayRow key={i} item={item} index={i}
-                        onUpdate={updateVA} onRemove={removeVA}
-                        selectKey="bank" selectOptions={BANK_LIST} />
-                    ))}
-                  </div>
-                )
-              }
-            </div>
-
-            <button onClick={saveAll} disabled={saving}
-              className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-              {saving ? '⏳ Menyimpan...' : '💾 Simpan Data Virtual Account'}
-            </button>
           </div>
         )}
 
