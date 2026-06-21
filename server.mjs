@@ -99,7 +99,8 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
 
     const xenditData = xenditResponse.data;
     const xenditAccountId = xenditData.id;
-    const activationUrl = xenditData.public_profile?.activation_url;
+    const activationUrl = xenditData.public_profile?.activation_url || '';
+    const storedMerchantId = activationUrl ? `${xenditAccountId}|${activationUrl}` : xenditAccountId;
 
     const { error: supabaseError } = await supabase
       .from('payment_settings')
@@ -107,7 +108,7 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
         {
           tenant_id: tenantId,
           outlet_id: outletId,
-          xendit_merchant_id: xenditAccountId,
+          xendit_merchant_id: storedMerchantId,
           xendit_va_status: 'Diproses',
           xendit_qris_status: 'Diproses',
           updated_at: new Date().toISOString(),
@@ -141,7 +142,10 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
       if (existingAccount) {
         const xenditAccountId = existingAccount.id;
         const activationUrl = existingAccount.public_profile?.activation_url || '';
-        const status = existingAccount.status === 'LIVE' ? 'Aktif' : 'Diproses';
+        const isSandbox = (process.env.XENDIT_SECRET_KEY || '').includes('development') || (process.env.XENDIT_SECRET_KEY || '').includes('test');
+        const isApproved = existingAccount.status === 'LIVE' || (isSandbox && existingAccount.status === 'REGISTERED');
+        const status = isApproved ? 'Aktif' : 'Diproses';
+        const storedMerchantId = activationUrl ? `${xenditAccountId}|${activationUrl}` : xenditAccountId;
 
         const { error: supabaseError } = await supabase
           .from('payment_settings')
@@ -149,7 +153,7 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
             {
               tenant_id: tenantId,
               outlet_id: outletId,
-              xendit_merchant_id: xenditAccountId,
+              xendit_merchant_id: storedMerchantId,
               xendit_va_status: status,
               xendit_qris_status: status,
               updated_at: new Date().toISOString(),
@@ -177,6 +181,68 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
   }
 });
 
+app.get('/api/xendit/account/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'Account ID required' });
+  if (id === 'MASTER') {
+    return res.status(200).json({
+      success: true,
+      status: 'Aktif',
+      activationUrl: '',
+      account: { id: 'MASTER', status: 'LIVE' }
+    });
+  }
+  try {
+    const cleanId = id.split('|')[0];
+    const response = await axios.get(
+      `https://api.xendit.co/v2/accounts/${cleanId}`,
+      { headers: xenditAuthHeader }
+    );
+    const accData = response.data;
+    const activationUrl = accData.public_profile?.activation_url || '';
+    
+    const isSandbox = (process.env.XENDIT_SECRET_KEY || '').includes('development') || (process.env.XENDIT_SECRET_KEY || '').includes('test');
+    const isApproved = accData.status === 'LIVE' || (isSandbox && accData.status === 'REGISTERED');
+    const status = isApproved ? 'Aktif' : 'Diproses';
+
+    if (isApproved) {
+      const storedMerchantId = activationUrl ? `${cleanId}|${activationUrl}` : cleanId;
+      await supabase
+        .from('payment_settings')
+        .update({
+          xendit_va_status: 'Aktif',
+          xendit_qris_status: 'Aktif',
+          payment_qris_enabled: true,
+          payment_va_enabled: true,
+          xendit_merchant_id: storedMerchantId,
+          updated_at: new Date().toISOString()
+        })
+        .like('xendit_merchant_id', `${cleanId}%`);
+    } else {
+      const storedMerchantId = activationUrl ? `${cleanId}|${activationUrl}` : cleanId;
+      await supabase
+        .from('payment_settings')
+        .update({
+          xendit_merchant_id: storedMerchantId,
+          updated_at: new Date().toISOString()
+        })
+        .like('xendit_merchant_id', `${cleanId}%`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      status,
+      activationUrl,
+      account: accData
+    });
+  } catch (error) {
+    console.error('Error fetching Xendit sub-account:', error.response?.data || error.message);
+    return res.status(500).json({
+      error: error.response?.data?.message || error.message || 'Gagal mengambil data akun Xendit.'
+    });
+  }
+});
+
 app.post('/api/xendit/webhook-account-update', async (req, res) => {
   const webhookData = req.body;
 
@@ -192,7 +258,7 @@ app.post('/api/xendit/webhook-account-update', async (req, res) => {
           payment_qris_enabled: true,
           payment_va_enabled: true,
         })
-        .eq('xendit_merchant_id', xenditAccountId);
+        .like('xendit_merchant_id', `${xenditAccountId}%`);
 
       if (error) throw error;
       console.log(`[Webhook] Akun Xendit ${xenditAccountId} AKTIF.`);
@@ -212,15 +278,24 @@ app.post('/api/xendit/create-qr', async (req, res) => {
   }
 
   try {
-    let query = supabase.from('payment_settings').select('xendit_merchant_id').eq('tenant_id', tenantId);
+    let query = supabase
+      .from('payment_settings')
+      .select('xendit_merchant_id')
+      .eq('tenant_id', tenantId)
+      .not('xendit_merchant_id', 'is', null);
+
     if (outletId) {
       query = query.eq('outlet_id', outletId);
     }
-    const { data: settings, error: dbError } = await query.maybeSingle();
+
+    const { data: settingsList, error: dbError } = await query
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
     if (dbError) throw dbError;
+    const settings = settingsList?.[0];
     
-    const xenditMerchantId = settings?.xendit_merchant_id;
+    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
     
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       return res.status(200).json({
@@ -228,6 +303,14 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         isSimulated: true,
         qrString: `https://agrapos.dev/qris-simulate?amount=${amount}&merchant=ID-AGRAPOS-BYPASS&tx=${transactionId}`,
       });
+    }
+
+    const headers = {
+      ...xenditAuthHeader,
+      'api-version': '2022-07-31'
+    };
+    if (xenditMerchantId && xenditMerchantId !== 'MASTER') {
+      headers['for-user-id'] = xenditMerchantId;
     }
 
     const response = await axios.post(
@@ -238,13 +321,7 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         currency: 'IDR',
         amount: Number(amount)
       },
-      {
-        headers: {
-          ...xenditAuthHeader,
-          'api-version': '2022-07-31',
-          'for-user-id': xenditMerchantId
-        }
-      }
+      { headers }
     );
 
     return res.status(200).json({
@@ -269,15 +346,24 @@ app.post('/api/xendit/create-va', async (req, res) => {
   }
 
   try {
-    let query = supabase.from('payment_settings').select('xendit_merchant_id').eq('tenant_id', tenantId);
+    let query = supabase
+      .from('payment_settings')
+      .select('xendit_merchant_id')
+      .eq('tenant_id', tenantId)
+      .not('xendit_merchant_id', 'is', null);
+
     if (outletId) {
       query = query.eq('outlet_id', outletId);
     }
-    const { data: settings, error: dbError } = await query.maybeSingle();
+
+    const { data: settingsList, error: dbError } = await query
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
     if (dbError) throw dbError;
+    const settings = settingsList?.[0];
 
-    const xenditMerchantId = settings?.xendit_merchant_id;
+    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       const suffix = String(tenantId).replace(/\D/g, '').substring(0, 7) || '1234567';
@@ -292,6 +378,11 @@ app.post('/api/xendit/create-va', async (req, res) => {
       });
     }
 
+    const headers = { ...xenditAuthHeader };
+    if (xenditMerchantId && xenditMerchantId !== 'MASTER') {
+      headers['for-user-id'] = xenditMerchantId;
+    }
+
     const response = await axios.post(
       'https://api.xendit.co/callback_virtual_accounts',
       {
@@ -301,12 +392,7 @@ app.post('/api/xendit/create-va', async (req, res) => {
         expected_amount: Number(amount),
         is_closed: true
       },
-      {
-        headers: {
-          ...xenditAuthHeader,
-          'for-user-id': xenditMerchantId
-        }
-      }
+      { headers }
     );
 
     return res.status(200).json({
@@ -455,15 +541,18 @@ app.post('/api/xendit/static-qr', async (req, res) => {
   }
 
   try {
-    const { data: settings, error: dbError } = await supabase
+    const { data: settingsList, error: dbError } = await supabase
       .from('payment_settings')
       .select('xendit_merchant_id')
       .eq('tenant_id', tenantId)
-      .maybeSingle();
+      .not('xendit_merchant_id', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
     if (dbError) throw dbError;
+    const settings = settingsList?.[0];
 
-    const xenditMerchantId = settings?.xendit_merchant_id;
+    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       return res.status(200).json({
@@ -474,6 +563,14 @@ app.post('/api/xendit/static-qr', async (req, res) => {
 
     const referenceId = `static-qr-${tenantId}`;
     try {
+      const headers = {
+        ...xenditAuthHeader,
+        'api-version': '2022-07-31'
+      };
+      if (xenditMerchantId && xenditMerchantId !== 'MASTER') {
+        headers['for-user-id'] = xenditMerchantId;
+      }
+
       const response = await axios.post(
         'https://api.xendit.co/qr_codes',
         {
@@ -481,13 +578,7 @@ app.post('/api/xendit/static-qr', async (req, res) => {
           type: 'STATIC',
           currency: 'IDR'
         },
-        {
-          headers: {
-            ...xenditAuthHeader,
-            'api-version': '2022-07-31',
-            'for-user-id': xenditMerchantId
-          }
-        }
+        { headers }
       );
 
       return res.status(200).json({
@@ -497,15 +588,17 @@ app.post('/api/xendit/static-qr', async (req, res) => {
     } catch (error) {
       const xenditError = error.response?.data;
       if (xenditError?.error_code === 'DUPLICATE_ERROR' && xenditError.existing) {
+        const headers = {
+          ...xenditAuthHeader,
+          'api-version': '2022-07-31'
+        };
+        if (xenditMerchantId && xenditMerchantId !== 'MASTER') {
+          headers['for-user-id'] = xenditMerchantId;
+        }
+
         const getResponse = await axios.get(
           `https://api.xendit.co/qr_codes/${xenditError.existing}`,
-          {
-            headers: {
-              ...xenditAuthHeader,
-              'api-version': '2022-07-31',
-              'for-user-id': xenditMerchantId
-            }
-          }
+          { headers }
         );
         return res.status(200).json({
           success: true,
@@ -529,14 +622,17 @@ app.post('/api/xendit/fixed-vas', async (req, res) => {
   }
 
   try {
-    const { data: settings, error: dbError } = await supabase
+    const { data: settingsList, error: dbError } = await supabase
       .from('payment_settings')
       .select('xendit_merchant_id')
       .eq('tenant_id', tenantId)
-      .maybeSingle();
+      .not('xendit_merchant_id', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
     if (dbError) throw dbError;
-    const xenditMerchantId = settings?.xendit_merchant_id;
+    const settings = settingsList?.[0];
+    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       const suffix = String(tenantId).replace(/\D/g, '').substring(0, 7) || '1234567';
@@ -566,6 +662,11 @@ app.post('/api/xendit/fixed-vas', async (req, res) => {
           const { data: tenantData } = await supabase.from('tenants').select('tenant_name').eq('tenant_id', tenantId).maybeSingle();
           const vaName = tenantData?.tenant_name || 'Toko ' + tenantId;
           
+          const headers = { ...xenditAuthHeader };
+          if (xenditMerchantId && xenditMerchantId !== 'MASTER') {
+            headers['for-user-id'] = xenditMerchantId;
+          }
+          
           const createResponse = await axios.post(
             'https://api.xendit.co/callback_virtual_accounts',
             {
@@ -574,12 +675,7 @@ app.post('/api/xendit/fixed-vas', async (req, res) => {
               name: vaName,
               is_closed: false
             },
-            {
-              headers: {
-                ...xenditAuthHeader,
-                'for-user-id': xenditMerchantId
-              }
-            }
+            { headers }
           );
           tenantVAs.push(createResponse.data);
           createdNew = true;

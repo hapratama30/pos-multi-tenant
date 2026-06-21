@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
-import { registerXenditTenant, getXenditStaticQR, getXenditFixedVAs } from '../../utils/api';
+import { registerXenditTenant, getXenditStaticQR, getXenditFixedVAs, getXenditAccount } from '../../utils/api';
 import QrisStandarFrame from './QrisStandarFrame';
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
@@ -262,13 +262,18 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   const fetchPaymentData = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch settings (menggunakan kolom boolean relasional)
-      const { data, error } = await supabase
+      let settingsQuery = supabase
         .from('payment_settings')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('outlet_id', selectedOutletId)
-        .maybeSingle();
+        .eq('tenant_id', tenantId);
+
+      if (selectedOutletId === null || selectedOutletId === undefined) {
+        settingsQuery = settingsQuery.is('outlet_id', null);
+      } else {
+        settingsQuery = settingsQuery.eq('outlet_id', selectedOutletId);
+      }
+
+      const { data, error } = await settingsQuery.maybeSingle();
 
       if (error) throw error;
       if (data) {
@@ -279,11 +284,37 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           transfer_bank: data.payment_transfer_enabled === true,
           ewallet: data.payment_ewallet_enabled === true,
         });
-        setXenditAccountId(data.xendit_merchant_id || '');
+        const rawId = data.xendit_merchant_id || '';
+        const [accId, actUrl] = rawId.split('|');
+        setXenditAccountId(accId);
         setXenditVaStatus(data.xendit_va_status || 'Belum Terdaftar');
         setXenditQrisStatus(data.xendit_qris_status || 'Belum Terdaftar');
+        setActivationUrl(actUrl || '');
         setQrisNmid(data.qris_nmid || 'ID1020304050607');
         setQrisTid(data.qris_tid || 'A01');
+
+        // SINKRONISASI STATUS SECARA REAL-TIME DARI XENDIT JIKA MASIH DIPROSES
+        const currentStatus = (data.xendit_qris_status || '').toUpperCase();
+        if (accId && accId !== 'ID-AGRAPOS-BYPASS' && (currentStatus === 'DIPROSES' || currentStatus === 'BELUM TERDAFTAR')) {
+          getXenditAccount(accId)
+            .then(resData => {
+              if (resData.success) {
+                setXenditVaStatus(resData.status);
+                setXenditQrisStatus(resData.status);
+                if (resData.activationUrl) setActivationUrl(resData.activationUrl);
+                if (resData.status === 'Aktif') {
+                  setMethods(prev => ({ ...prev, qris: true, virtual_account: true }));
+                }
+              }
+            })
+            .catch(err => {
+              if (err.message === 'Failed to fetch') {
+                console.warn('Gagal sinkronisasi status akun Xendit: Server backend (port 5000) offline.');
+              } else {
+                console.error('Gagal sinkronisasi status akun Xendit:', err);
+              }
+            });
+        }
       }
 
       // Selalu fetch modules dari tenant untuk mengecek akses QRIS
@@ -313,12 +344,18 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         }
       }
 
-      // Fetch accounts secara relasional
-      const { data: accounts, error: accountsErr } = await supabase
+      let accountsQuery = supabase
         .from('payment_accounts')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('outlet_id', selectedOutletId);
+        .eq('tenant_id', tenantId);
+
+      if (selectedOutletId === null || selectedOutletId === undefined) {
+        accountsQuery = accountsQuery.is('outlet_id', null);
+      } else {
+        accountsQuery = accountsQuery.eq('outlet_id', selectedOutletId);
+      }
+
+      const { data: accounts, error: accountsErr } = await accountsQuery;
 
       if (accountsErr) throw accountsErr;
       if (accounts) {
@@ -419,6 +456,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       });
       
       const accId = result.xenditAccountId || '';
+      const storedMerchantId = result.activationUrl ? `${accId}|${result.activationUrl}` : accId;
       
       if (accId) {
         // Direct frontend write fallback
@@ -428,7 +466,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
             {
               tenant_id: tenantId,
               outlet_id: selectedOutletId,
-              xendit_merchant_id: accId,
+              xendit_merchant_id: storedMerchantId,
               xendit_va_status: 'Diproses',
               xendit_qris_status: 'Diproses',
               updated_at: new Date().toISOString(),
@@ -443,7 +481,10 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setActivationUrl(result.activationUrl || '');
       setMsg({ type: 'success', text: result.message || 'Sub-akun Xendit berhasil dibuat!' });
     } catch (err) {
-      setMsg({ type: 'error', text: err.message });
+      const errMsg = err.message === 'Failed to fetch'
+        ? 'Gagal mendaftarkan akun: Server backend (port 5000) tidak aktif. Pastikan backend server Anda sudah berjalan.'
+        : (err.message || 'Gagal mendaftarkan akun Xendit.');
+      setMsg({ type: 'error', text: errMsg });
     } finally {
       setSaving(false);
     }
@@ -777,20 +818,22 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                       checked={!!methods[m.key] && !isItemLocked} 
                       onChange={() => {
                         if (isItemLocked) return;
-                        if (m.key === 'qris' && !methods.qris && xenditQrisStatus !== 'Aktif') {
+                        const isQrisActiveOrPending = ['AKTIF', 'DIPROSES'].includes((xenditQrisStatus || '').toUpperCase());
+                        if (m.key === 'qris' && !methods.qris && !isQrisActiveOrPending) {
                           setAlertModal({
                             show: true,
                             title: '⚠️ QRIS Belum Aktif',
-                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;
                         }
-                        if (m.key === 'virtual_account' && !methods.virtual_account && xenditVaStatus !== 'Aktif') {
+                        const isVaActiveOrPending = ['AKTIF', 'DIPROSES'].includes((xenditVaStatus || '').toUpperCase());
+                        if (m.key === 'virtual_account' && !methods.virtual_account && !isVaActiveOrPending) {
                           setAlertModal({
                             show: true,
                             title: '⚠️ Virtual Account Belum Aktif',
-                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;

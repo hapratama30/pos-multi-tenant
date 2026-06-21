@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
 
 export async function apiPost(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -33,4 +33,14 @@ export async function getXenditFixedVAs({ tenantId }) {
   return apiPost('/api/xendit/fixed-vas', { tenantId });
 }
 
+export async function getXenditAccount(accId) {
+  const res = await fetch(`${API_BASE}/api/xendit/account/${accId}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || data.message || `Request failed (${res.status})`);
+  }
+  return data;
+}
+
 export { API_BASE };
+

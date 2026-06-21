@@ -518,20 +518,26 @@ export default function PrinterSettings({ tenantId, selectedOutletId, onBack }) 
   const fetchPrinterData = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: printerData } = await supabase
+      let printerQuery = supabase
         .from('printer_settings')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('outlet_id', selectedOutletId)
-        .maybeSingle();
+        .eq('tenant_id', tenantId);
 
-      // Fetch general payment settings (for xendit merchant id and status)
-      const { data: generalSettings } = await supabase
+      let settingsQuery = supabase
         .from('payment_settings')
         .select('xendit_merchant_id, xendit_qris_status')
-        .eq('tenant_id', tenantId)
-        .eq('outlet_id', selectedOutletId)
-        .maybeSingle();
+        .eq('tenant_id', tenantId);
+
+      if (selectedOutletId === null || selectedOutletId === undefined) {
+        printerQuery = printerQuery.is('outlet_id', null);
+        settingsQuery = settingsQuery.is('outlet_id', null);
+      } else {
+        printerQuery = printerQuery.eq('outlet_id', selectedOutletId);
+        settingsQuery = settingsQuery.eq('outlet_id', selectedOutletId);
+      }
+
+      const { data: printerData } = await printerQuery.maybeSingle();
+      const { data: generalSettings } = await settingsQuery.maybeSingle();
 
       if (printerData) {
         setPrinterSize(printerData.printer_size || '58mm');
@@ -559,12 +565,18 @@ export default function PrinterSettings({ tenantId, selectedOutletId, onBack }) 
         setShowItemDetail(printerData.wa_show_item_detail !== false);
       }
 
-      // Sync payment info untuk preview struk & WA secara relasional
-      const { data: accounts } = await supabase
+      let accountsQuery = supabase
         .from('payment_accounts')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('outlet_id', selectedOutletId);
+        .eq('tenant_id', tenantId);
+
+      if (selectedOutletId === null || selectedOutletId === undefined) {
+        accountsQuery = accountsQuery.is('outlet_id', null);
+      } else {
+        accountsQuery = accountsQuery.eq('outlet_id', selectedOutletId);
+      }
+
+      const { data: accounts } = await accountsQuery;
 
       const va = (accounts || []).filter(a => a.type === 'va').map(a => ({ bank: a.provider, number: a.number, name: a.name }));
       const transfer = (accounts || []).filter(a => a.type === 'transfer').map(a => ({ bank: a.provider, number: a.number, name: a.name }));

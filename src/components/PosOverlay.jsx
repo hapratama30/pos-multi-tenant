@@ -47,6 +47,10 @@ const fetchPrinterSettings = async (tenantId, outletId) => {
       printerQuery = printerQuery.eq('outlet_id', outletId);
       settingsQuery = settingsQuery.eq('outlet_id', outletId);
       accountsQuery = accountsQuery.eq('outlet_id', outletId);
+    } else {
+      printerQuery = printerQuery.is('outlet_id', null);
+      settingsQuery = settingsQuery.is('outlet_id', null);
+      accountsQuery = accountsQuery.is('outlet_id', null);
     }
 
     const { data: printerCfg } = await printerQuery.maybeSingle();
@@ -59,6 +63,10 @@ const fetchPrinterSettings = async (tenantId, outletId) => {
       ...(settingsCfg || {}),
       ...(printerCfg || {})
     };
+
+    if (combinedCfg.xendit_merchant_id) {
+      combinedCfg.xendit_merchant_id = combinedCfg.xendit_merchant_id.split('|')[0];
+    }
 
     const va = (accounts || []).filter(a => a.type === 'va').map(a => ({ bank: a.provider, number: a.number, name: a.name }));
     const transfer = (accounts || []).filter(a => a.type === 'transfer').map(a => ({ bank: a.provider, number: a.number, name: a.name }));
@@ -129,16 +137,18 @@ const buildPaymentMethods = (cfg, cart = []) => {
   const methods = cfg?.payment_methods || {};
   const result = [];
   
+  const isQrisActiveOrPending = ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
+
   if (hasPPOB) {
     result.push({ key: 'saldo_deposit', label: 'Saldo Deposit', icon: '⚡' });
-    if (methods.qris === true && (cfg?.xendit_merchant_id || cfg?.xendit_qris_status === 'Aktif' || cfg?.xendit_qris_status === 'Diproses')) result.push({ key: 'qris', label: 'QRIS', icon: '📱' });
+    if (methods.qris === true && (cfg?.xendit_merchant_id || isQrisActiveOrPending)) result.push({ key: 'qris', label: 'QRIS', icon: '📱' });
     if (methods.ewallet === true) result.push({ key: 'ewallet', label: 'e-Wallet', icon: '📲' });
     if (methods.virtual_account === true) result.push({ key: 'virtual_account', label: 'Virtual Account', icon: '🏦' });
     return result;
   }
 
   if (methods.cash !== false && (methods.cash === true || methods.cash === undefined)) result.push({ key: 'cash', label: 'Tunai', icon: '💵' });
-  if (methods.qris === true && (cfg?.xendit_merchant_id || cfg?.xendit_qris_status === 'Aktif' || cfg?.xendit_qris_status === 'Diproses')) result.push({ key: 'qris', label: 'QRIS', icon: '📱' });
+  if (methods.qris === true && (cfg?.xendit_merchant_id || isQrisActiveOrPending)) result.push({ key: 'qris', label: 'QRIS', icon: '📱' });
   if (methods.virtual_account === true) result.push({ key: 'virtual_account', label: 'Virtual Account', icon: '🏦' });
   if (methods.transfer_bank === true) result.push({ key: 'transfer_bank', label: 'Transfer Bank', icon: '💳' });
   if (methods.ewallet === true) result.push({ key: 'ewallet', label: 'e-Wallet', icon: '📲' });
@@ -278,7 +288,7 @@ const handlePrintNota = async ({
     const transferList = cfg?.transfer_banks || [];
     const ewalletList = cfg?.ewallet_numbers || [];
     const qrisMerchant = cfg?.xendit_merchant_id || '';
-    const qrisOk = cfg?.xendit_merchant_id || cfg?.xendit_qris_status === 'Aktif' || cfg?.xendit_qris_status === 'Diproses';
+    const qrisOk = cfg?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
 
     let instructions = [];
 
@@ -1023,7 +1033,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
       const transferList = cfg?.transfer_banks || [];
       const ewalletList = cfg?.ewallet_numbers || [];
       const qrisMerchant = cfg?.xendit_merchant_id || '';
-      const qrisOk = cfg?.xendit_qris_status === 'Aktif';
+      const qrisOk = ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
 
       let instructions = [];
 
@@ -2030,7 +2040,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
               </div>
 
               {/* QRIS STATIS NOTA */}
-              {savedTransaction?.payment_method === 'Belum Lunas' && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || paymentSettings?.xendit_qris_status === 'Aktif' || paymentSettings?.xendit_qris_status === 'Diproses') && (
+              {savedTransaction?.payment_method === 'Belum Lunas' && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((paymentSettings?.xendit_qris_status || '').toUpperCase())) && (
                 <div className="bg-white rounded-2xl p-4 mb-4 flex flex-col items-center justify-center text-center border shrink-0 animate-in fade-in duration-300" style={{ borderColor: '#d1ede8' }}>
                   <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">📋 SCAN QRIS STATIS TOKO</p>
                   <img
@@ -2289,6 +2299,19 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                             {/* ── QRIS AREA ── */}
                             {isQris && (
                               <div className="px-4 pb-4 flex flex-col items-center justify-center text-center space-y-4 pt-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status QRIS:</span>
+                                  <span className={`text-[9px] px-2.5 py-1 font-black uppercase rounded-lg border ${
+                                    String(cfg.xendit_qris_status || '').toUpperCase() === 'AKTIF'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm'
+                                      : String(cfg.xendit_qris_status || '').toUpperCase() === 'DIPROSES'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-sm'
+                                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                                  }`}>
+                                    {cfg.xendit_qris_status || 'Belum Terdaftar'}
+                                  </span>
+                                </div>
+
                                 <div className="flex bg-slate-100 p-1 rounded-xl w-full max-w-[280px] mx-auto border border-slate-200">
                                   <button type="button" onClick={() => setQrisType('dinamis')} className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${qrisType === 'dinamis' ? 'bg-white text-teal-800 shadow-sm border border-slate-200/50' : 'text-slate-400 hover:text-slate-600'}`}>⚡ Dinamis</button>
                                   <button type="button" onClick={() => setQrisType('statis')} className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${qrisType === 'statis' ? 'bg-white text-teal-800 shadow-sm border border-slate-200/50' : 'text-slate-400 hover:text-slate-600'}`}>📋 Statis</button>
@@ -2337,6 +2360,12 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                       />
                                       <span className="text-[9px] font-black text-slate-800 tracking-widest mt-2 uppercase">QRIS STATIS TOKO 📋</span>
                                       <span className="font-mono text-[8px] text-slate-400 font-bold">{qrisMerchant || 'ID-AGRAPOS-DEMO'}</span>
+                                      {cfg.qris_nmid && (
+                                        <div className="text-[9px] text-slate-500 font-semibold mt-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                          NMID: <span className="font-mono font-black text-slate-700">{cfg.qris_nmid}</span>
+                                          {cfg.qris_tid && <span> · TID: <span className="font-mono font-black text-slate-700">{cfg.qris_tid}</span></span>}
+                                        </div>
+                                      )}
                                     </div>
                                     <div>
                                       <p className="text-[11px] font-mono font-black text-slate-900">Nominal Bebas / Manual</p>

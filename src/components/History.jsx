@@ -298,7 +298,8 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
           .maybeSingle();
         if (!data) return;
         setPaymentSettings(data);
-        const qrisOk = data.xendit_qris_status === 'Aktif' || data.xendit_merchant_id;
+        const qrisMerchant = (data.xendit_merchant_id || '').split('|')[0];
+        const qrisOk = ['AKTIF', 'DIPROSES'].includes((data.xendit_qris_status || '').toUpperCase()) || qrisMerchant;
         const list = [
           { label: 'Tunai', icon: '💵', show: data.payment_cash_enabled !== false },
           { label: 'QRIS', icon: '📱', show: data.payment_qris_enabled === true && qrisOk },
@@ -615,16 +616,15 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
             </div>
           </section>
 
-          {/* QRIS STATIS NOTA */}
-          {isUnpaid && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || paymentSettings?.xendit_qris_status === 'Aktif' || paymentSettings?.xendit_qris_status === 'Diproses') && (
+          {isUnpaid && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((paymentSettings?.xendit_qris_status || '').toUpperCase())) && (
             <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center border" style={{ borderColor: '#d1ede8' }}>
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">📋 SCAN QRIS STATIS TOKO</p>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://agrapos.dev/merchant/${paymentSettings.xendit_merchant_id || 'ID-AGRAPOS-DEMO'}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://agrapos.dev/merchant/${(paymentSettings.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'}`}
                 alt="QRIS Statis Toko" 
                 className="w-24 h-24 object-contain mb-1.5"
               />
-              <span className="font-mono text-[8px] text-slate-400 font-bold">{paymentSettings.xendit_merchant_id || 'ID-AGRAPOS-DEMO'}</span>
+              <span className="font-mono text-[8px] text-slate-400 font-bold">{(paymentSettings.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'}</span>
             </div>
           )}
 
@@ -703,7 +703,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                         className="w-32 h-32 object-contain animate-in fade-in duration-300"
                       />
                       <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">XENDIT DYNAMIC QRIS ⚡</span>
-                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {paymentSettings?.xendit_merchant_id || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id}</span>
+                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id}</span>
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
                       

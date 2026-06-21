@@ -23,6 +23,10 @@ export const fetchPrinterSettings = async (tenantId, outletId) => {
       printerQuery = printerQuery.eq('outlet_id', outletId);
       settingsQuery = settingsQuery.eq('outlet_id', outletId);
       accountsQuery = accountsQuery.eq('outlet_id', outletId);
+    } else {
+      printerQuery = printerQuery.is('outlet_id', null);
+      settingsQuery = settingsQuery.is('outlet_id', null);
+      accountsQuery = accountsQuery.is('outlet_id', null);
     }
 
     const { data: printerCfg } = await printerQuery.maybeSingle();
@@ -35,6 +39,10 @@ export const fetchPrinterSettings = async (tenantId, outletId) => {
       ...(settingsCfg || {}),
       ...(printerCfg || {})
     };
+
+    if (combinedCfg.xendit_merchant_id) {
+      combinedCfg.xendit_merchant_id = combinedCfg.xendit_merchant_id.split('|')[0];
+    }
 
     const va = (accounts || []).filter(a => a.type === 'va').map(a => ({ bank: a.provider, number: a.number, name: a.name }));
     const transfer = (accounts || []).filter(a => a.type === 'transfer').map(a => ({ bank: a.provider, number: a.number, name: a.name }));
@@ -191,7 +199,7 @@ export async function printTransactionReceipt({ transaction, meta, tenantId }) {
     const transferList = cfg?.transfer_banks || [];
     const ewalletList = cfg?.ewallet_numbers || [];
     const qrisMerchant = cfg?.xendit_merchant_id || '';
-    const qrisOk = cfg?.xendit_merchant_id || cfg?.xendit_qris_status === 'Aktif' || cfg?.xendit_qris_status === 'Diproses';
+    const qrisOk = cfg?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
 
     let instructions = [];
 
@@ -404,7 +412,7 @@ export async function sendTransactionWhatsApp({ transaction, meta, tenantId }) {
     const transferList = cfg?.transfer_banks || [];
     const ewalletList = cfg?.ewallet_numbers || [];
     const qrisMerchant = cfg?.xendit_merchant_id || '';
-    const qrisOk = cfg?.xendit_qris_status === 'Aktif';
+    const qrisOk = ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
 
     let instructions = [];
 
@@ -706,7 +714,7 @@ export async function printDirectBluetooth({ transaction, meta, tenantId }) {
   if (transaction?.payment_method === 'Belum Lunas') {
     const methods = cfg?.payment_methods || {};
     const qrisMerchant = cfg?.xendit_merchant_id || '';
-    const qrisOk = cfg?.xendit_merchant_id || cfg?.xendit_qris_status === 'Aktif' || cfg?.xendit_qris_status === 'Diproses';
+    const qrisOk = cfg?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((cfg?.xendit_qris_status || '').toUpperCase());
 
     const vaList = cfg?.va_numbers || [];
     const transferList = cfg?.transfer_banks || [];

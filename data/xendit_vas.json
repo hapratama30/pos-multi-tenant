@@ -45,5 +45,52 @@
       "currency": "IDR",
       "country": "ID"
     }
+  ],
+  "TDE6C1A9CBDB3": [
+    {
+      "expiration_date": "2057-06-21T13:05:07.264Z",
+      "id": "0e7bc431-27fe-40ea-8b76-9acd7846824d",
+      "owner_id": "6a37dc56f5e4e7310c5b6b10",
+      "external_id": "fixed-va-TDE6C1A9CBDB3-bca",
+      "merchant_code": "38166",
+      "account_number": "381669999559242",
+      "bank_code": "BCA",
+      "name": "TOKO KOPI ADMIN",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    },
+    {
+      "expiration_date": "2057-06-21T13:05:08.263Z",
+      "id": "cb0e7ddd-acee-43a9-805c-196ffc035ffa",
+      "owner_id": "6a37dc56f5e4e7310c5b6b10",
+      "external_id": "fixed-va-TDE6C1A9CBDB3-bni",
+      "merchant_code": "8808",
+      "account_number": "8808999906390556",
+      "bank_code": "BNI",
+      "name": "XDT-TOKO KOPI ADMIN",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    },
+    {
+      "expiration_date": "2057-06-21T13:05:09.317Z",
+      "id": "eabef56c-8b52-4395-87e6-a209c084cb36",
+      "owner_id": "6a37dc56f5e4e7310c5b6b10",
+      "external_id": "fixed-va-TDE6C1A9CBDB3-bri",
+      "merchant_code": "13281",
+      "account_number": "132819999284042",
+      "bank_code": "BRI",
+      "name": "TOKO KOPI ADMIN",
+      "is_closed": false,
+      "is_single_use": false,
+      "status": "PENDING",
+      "currency": "IDR",
+      "country": "ID"
+    }
   ]
 }
