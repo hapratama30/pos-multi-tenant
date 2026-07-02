@@ -962,11 +962,11 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
   }, [products, searchQuery]);
 
   const updateQuantity = (productId, amount) => {
-    setCart(prev =>
-      prev
-        .map(i => i.id === productId ? { ...i, quantity: Number((Number(i.quantity) + amount).toFixed(2)) } : i)
-        .filter(i => i.quantity > 0)
-    );
+    const item = cart.find(i => i.id === productId);
+    if (item) {
+      const newQty = Number((Number(item.quantity) + amount).toFixed(2));
+      updateCartItemQty(productId, newQty);
+    }
   };
 
 
