@@ -419,6 +419,35 @@ app.post('/api/xendit/create-va', async (req, res) => {
   }
 });
 
+app.post('/api/xendit/simulate-va-payment', async (req, res) => {
+  const { externalId, amount, subaccountId } = req.body;
+  if (!externalId || !amount) {
+    return res.status(400).json({ error: 'Missing externalId or amount' });
+  }
+
+  try {
+    const headers = { ...xenditAuthHeader };
+    if (subaccountId) {
+      headers['for-user-id'] = subaccountId;
+    }
+    console.log(`[Simulate VA] externalId: ${externalId}, amount: ${amount}, subaccountId: ${subaccountId}`);
+    const response = await axios.post(
+      `https://api.xendit.co/callback_virtual_accounts/${externalId}/simulate_payment`,
+      { amount: Number(amount) },
+      { headers }
+    );
+    return res.status(200).json({
+      success: true,
+      data: response.data
+    });
+  } catch (error) {
+    console.error('Error simulating VA payment on server:', error.response?.data || error.message);
+    return res.status(error.response?.status || 500).json({
+      error: error.response?.data || error.message
+    });
+  }
+});
+
 app.post('/api/xendit/create-subscription-payment', async (req, res) => {
   const { method, bankCode, amount, name, email } = req.body;
 
