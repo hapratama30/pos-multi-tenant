@@ -802,6 +802,12 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
         { headers }
       );
 
+      // Simpan Xendit QR ID ke DB untuk simulate
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: response.data.id,
+        payment_method: 'QRIS'
+      }).eq('id', billing.id);
+
       return res.status(200).json({
         success: true,
         billingId: billing.id,
@@ -825,6 +831,12 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
         },
         { headers }
       );
+
+      // Simpan Xendit VA ID ke database
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: response.data.id,
+        payment_method: 'VA'
+      }).eq('id', billing.id);
 
       return res.status(200).json({
         success: true,
@@ -890,44 +902,12 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
       return res.status(200).json({ success: true, message: 'Billing sudah berstatus paid.' });
     }
 
-    // Cari Xendit QR ID dari reference_id BILL-{billingId}
-    const referenceId = `BILL-${billingId}`;
+    // Ambil Xendit Payment ID dari database (disimpan saat billing dibuat)
+    const xenditPaymentId = billing.xendit_invoice_id;
+    const paymentMethod = billing.payment_method || 'QRIS';
 
-    // Cek apakah ada QR code yang terdaftar di Xendit dengan reference_id ini
-    // Kita panggil Xendit Get QR Code by reference_id
-    let xenditQrId = null;
-    let xenditVaId = null;
-    let paymentMethod = 'QRIS';
-
-    try {
-      // Coba ambil QR code dari Xendit
-      const qrResponse = await axios.get(
-        `https://api.xendit.co/qr_codes?reference_id=${referenceId}`,
-        { headers: { ...xenditAuthHeader, 'api-version': '2022-07-31' } }
-      );
-      if (qrResponse.data?.data?.length > 0) {
-        xenditQrId = qrResponse.data.data[0].id;
-        paymentMethod = 'QRIS';
-      }
-    } catch (qrErr) {
-      console.log('[Simulate] QR lookup failed, trying VA:', qrErr.response?.data?.error_code || qrErr.message);
-    }
-
-    if (!xenditQrId) {
-      // Coba cari VA
-      try {
-        const vaResponse = await axios.get(
-          `https://api.xendit.co/callback_virtual_accounts?external_id=${referenceId}`,
-          { headers: xenditAuthHeader }
-        );
-        if (vaResponse.data?.id) {
-          xenditVaId = vaResponse.data.id;
-          paymentMethod = 'VA';
-        }
-      } catch (vaErr) {
-        console.log('[Simulate] VA lookup failed:', vaErr.response?.data?.error_code || vaErr.message);
-      }
-    }
+    let xenditQrId = (paymentMethod === 'QRIS') ? xenditPaymentId : null;
+    let xenditVaId = (paymentMethod === 'VA') ? xenditPaymentId : null;
 
     if (xenditQrId) {
       // Simulasi pembayaran QRIS via Xendit API
@@ -1071,6 +1051,12 @@ app.post('/api/saas/create-upgrade-billing', async (req, res) => {
         },
         { headers }
       );
+
+      // Simpan Xendit QR ID ke DB untuk simulate
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: response.data.id,
+        payment_method: 'QRIS'
+      }).eq('id', billing.id);
 
       return res.status(200).json({
         success: true,
