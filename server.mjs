@@ -466,6 +466,18 @@ app.get('/api/xendit/test-key', async (req, res) => {
   }
 });
 
+app.get('/api/xendit/get-va-details/:externalId', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.xendit.co/callback_virtual_accounts/external_id=${req.params.externalId}`,
+      { headers: xenditAuthHeader }
+    );
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return res.status(error.response?.status || 500).json({ error: error.response?.data || error.message });
+  }
+});
+
 app.post('/api/xendit/create-subscription-payment', async (req, res) => {
   const { method, bankCode, amount, name, email } = req.body;
 
