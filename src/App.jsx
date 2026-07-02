@@ -1387,8 +1387,8 @@ export default function App() {
 
             {/* ── LANGKAH 3: TAMPILKAN INSTRUKSI BAYAR (VA/QRIS) ── */}
             {upgradeStep === 'payment' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
-                <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+                <div style={{ width: '100%' }}>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase' }}>
                     Menunggu Pembayaran
                   </h3>
@@ -1397,89 +1397,128 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* QRIS */}
+                {/* QRIS Premium Card */}
                 {upgradePaymentMethod === 'QRIS' && upgradePaymentData?.qrString && (
-                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
-                    <div style={{ background: 'white', padding: '8px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                  <div style={{
+                    background: '#ffffff',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '24px',
+                    padding: '20px',
+                    width: '100%',
+                    maxWidth: '280px',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    {/* QRIS Header */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1.5px solid #f1f5f9',
+                      paddingBottom: '8px'
+                    }}>
+                      <img 
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_QRIS.svg/320px-Logo_QRIS.svg.png" 
+                        alt="QRIS" 
+                        style={{ height: '18px', objectFit: 'contain' }} 
+                      />
+                      <span style={{ 
+                        fontSize: '7.5px', 
+                        fontWeight: 900, 
+                        color: '#64748b', 
+                        border: '1.5px solid #cbd5e1', 
+                        padding: '1.5px 5px', 
+                        borderRadius: '4px',
+                        letterSpacing: '0.05em'
+                      }}>
+                        GPN
+                      </span>
+                    </div>
+
+                    {/* QR Frame */}
+                    <div style={{ 
+                      background: '#ffffff', 
+                      padding: '8px', 
+                      borderRadius: '16px', 
+                      border: '1px solid #f1f5f9',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upgradePaymentData.qrString)}`}
                         alt="QRIS Code"
                         style={{ width: '160px', height: '160px', display: 'block' }}
                       />
                     </div>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '9px', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>
-                      Scan QR di atas via GoPay, OVO, Dana, ShopeePay, atau Mobile Banking
-                    </p>
+
+                    <div style={{ borderTop: '1.5px solid #f1f5f9', paddingTop: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '8.5px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.4 }}>
+                        NMI: ID1020260702015
+                      </p>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '7.5px', color: '#94a3b8', fontWeight: 600, leadingHeight: 1.3 }}>
+                        Dicetak secara dinamis oleh AGRAPos
+                      </p>
+                    </div>
                   </div>
                 )}
 
-                {/* Virtual Account */}
+                {/* Virtual Account Premium Card */}
                 {upgradePaymentMethod === 'VA' && upgradePaymentData?.accountNumber && (
-                  <div style={{ width: '100%', background: '#f8fafc', padding: '16px', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
-                      Transfer VA {upgradePaymentData.bankCode}
-                    </span>
-                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#0d9488', letterSpacing: '0.05em' }}>
-                      {upgradePaymentData.accountNumber}
-                    </h2>
+                  <div style={{
+                    width: '100%',
+                    background: '#ffffff',
+                    padding: '20px',
+                    borderRadius: '24px',
+                    border: '1.5px solid #e2e8f0',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '10px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 900, color: '#0f766e', background: '#e0f2fe', padding: '3px 8px', borderRadius: '6px' }}>
+                        {upgradePaymentData.bankCode}
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569' }}>Transfer Virtual Account</span>
+                    </div>
+
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Nomor Rekening VA
+                      </p>
+                      <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#1e293b', letterSpacing: '0.05em' }}>
+                        {upgradePaymentData.accountNumber}
+                      </h2>
+                    </div>
+
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(upgradePaymentData.accountNumber);
                         alert('Nomor Virtual Account berhasil disalin!');
                       }}
                       style={{
-                        padding: '6px 12px', background: '#e2e8f0', color: '#475569',
-                        border: 'none', borderRadius: '8px', fontSize: '9.5px', fontWeight: 800,
-                        cursor: 'pointer', width: 'fit-content', margin: '0 auto'
+                        padding: '8px 16px', background: '#0d9488', color: 'white',
+                        border: 'none', borderRadius: '10px', fontSize: '10px', fontWeight: 800,
+                        cursor: 'pointer', width: 'fit-content', margin: '4px auto 0',
+                        boxShadow: '0 4px 10px rgba(13,148,136,0.15)'
                       }}
                     >
-                      Salin Nomor
+                      Salin Nomor VA
                     </button>
                   </div>
                 )}
-
-                <div style={{ width: '100%', padding: '10px 14px', background: '#f0fdfa', borderRadius: '16px', border: '1px solid #ccfbf1', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                  <p style={{ margin: 0, fontSize: '10px', color: '#0f766e', fontWeight: 800, textTransform: 'uppercase' }}>
-                    🛠️ Developer Mode (Simulasi Sandbox)
-                  </p>
-                  <p style={{ margin: 0, fontSize: '9.5px', color: '#0d9488', fontWeight: 500, lineHeight: 1.4 }}>
-                    Anda bisa mengeklik tombol di bawah untuk menyimulasikan kelunasan tagihan upgrade ini tanpa uang sungguhan.
-                  </p>
-                  <button
-                    disabled={upgradeCompletingSignup}
-                    onClick={async () => {
-                      setUpgradeCompletingSignup(true);
-                      setUpgradeError('');
-                      try {
-                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/simulate-billing-payment`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ billingId: upgradeBillingId })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || 'Gagal memicu simulasi.');
-                      } catch (err) {
-                        setUpgradeError(err.message || 'Gagal memicu simulasi.');
-                        setUpgradeCompletingSignup(false);
-                      }
-                    }}
-                    style={{
-                      marginTop: '6px', width: '100%', padding: '8px 0', background: '#0d9488',
-                      color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '9.5px',
-                      fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer'
-                    }}
-                  >
-                    {upgradeCompletingSignup ? 'Menyambungkan...' : 'Simulasikan Sukses (Sandbox)'}
-                  </button>
-                </div>
 
                 <button
                   type="button"
                   onClick={() => setUpgradeStep('checkout')}
                   style={{
-                    width: '100%', padding: '10px 0', background: '#f1f5f9', color: '#64748b',
-                    border: 'none', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                    cursor: 'pointer'
+                    width: '100%', padding: '12px 0', background: '#f1f5f9', color: '#64748b',
+                    border: 'none', borderRadius: '14px', fontSize: '11px', fontWeight: 700,
+                    cursor: 'pointer', marginTop: '4px'
                   }}
                 >
                   Kembali ke Checkout
