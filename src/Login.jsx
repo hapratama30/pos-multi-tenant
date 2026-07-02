@@ -66,12 +66,22 @@ export default function Login({ onLoginSuccess, onNavigateToRegister, onNavigate
         throw new Error("Akses ditolak. Akun Anda telah dinonaktifkan.");
       }
 
-      // STEP 3: Ambil tenant_name sekalian di sini — bukan di Dashboard
+      // STEP 3: Ambil tenant + status — cek apakah sudah aktif
       const { data: tenantData } = await supabase
         .from('tenants')
-        .select('tenant_name, plan_id')
+        .select('tenant_name, plan_id, status')
         .eq('tenant_id', staffData.tenant_id)
         .maybeSingle();
+
+      // Blokir login jika belum bayar
+      if (!tenantData || tenantData.status === 'pending_payment') {
+        await supabase.auth.signOut();
+        throw new Error('Akun Anda belum aktif. Silakan selesaikan pembayaran terlebih dahulu untuk mengakses dashboard.');
+      }
+      if (tenantData.status === 'suspended') {
+        await supabase.auth.signOut();
+        throw new Error('Akun Anda telah di-suspend. Silakan hubungi support untuk informasi lebih lanjut.');
+      }
 
       await linkStaffAuthUserId(staffData.id, authData.user.id);
       await updateJwtTenantMetadata(staffData.tenant_id, staffData.role || 'Kasir', staffData.name);

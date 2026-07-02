@@ -18,9 +18,14 @@ export async function resolveUserFromSession(session) {
 
   const { data: tenantData } = await supabase
     .from('tenants')
-    .select('tenant_name, business_vertical, enabled_modules')
+    .select('tenant_name, business_vertical, enabled_modules, status')
     .eq('tenant_id', staffData.tenant_id)
     .maybeSingle();
+
+  // Blokir login jika tenant belum bayar atau di-suspend
+  if (!tenantData || tenantData.status === 'pending_payment' || tenantData.status === 'suspended') {
+    return null;
+  }
 
   const { data: subData } = await supabase
     .from('tenant_subscriptions')
