@@ -30,6 +30,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
   const [paymentData, setPaymentData] = useState(null); // qrString, accountNumber, etc.
   const [checkoutError, setCheckoutError] = useState('');
   const [completingSignup, setCompletingSignup] = useState(false);
+  const [billingId, setBillingId] = useState(null);
 
   
   const navigateToLegal = (type) => {
@@ -63,6 +64,33 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
     window.addEventListener('landing-content-updated', handler);
     return () => window.removeEventListener('landing-content-updated', handler);
   }, [reloadContent]);
+
+  useEffect(() => {
+    if (checkoutStep !== 'payment' || !billingId) return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/billing-status/${billingId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.success && data.paid) {
+          if (isSubscribed) {
+            clearInterval(interval);
+            setCheckoutStep('success');
+          }
+        }
+      } catch (err) {
+        console.error('Polling billing status error:', err);
+      }
+    }, 3000); // check status every 3 seconds
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [checkoutStep, billingId]);
 
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -826,24 +854,28 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                   setLoadingPayment(true);
                   setCheckoutError('');
                   try {
-                    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/create-subscription-payment`, {
+                    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/register-pending-subscription`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
+                        email,
+                        password,
+                        namaOwner: ownerName,
+                        namaToko: storeName,
+                        nomorHp: phone,
+                        planId: checkoutPlan.id,
                         method: paymentMethod,
-                        bankCode,
-                        amount: checkoutPlan.price_monthly,
-                        name: ownerName,
-                        email
+                        bankCode
                       })
                     });
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Gagal membuat invoice pembayaran.');
+                    if (!res.ok) throw new Error(data.error || 'Gagal melakukan pendaftaran.');
                     
-                    setPaymentData(data);
+                    setPaymentData(data.paymentData);
+                    setBillingId(data.billingId);
                     setCheckoutStep('payment');
                   } catch (err) {
-                    setCheckoutError(err.message || 'Gagal memproses pembayaran. Hubungi admin.');
+                    setCheckoutError(err.message || 'Gagal memproses pendaftaran & pembayaran. Hubungi admin.');
                   } finally {
                     setLoadingPayment(false);
                   }
@@ -1000,55 +1032,53 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     )}
                   </div>
 
-                  <div className="bg-teal-50 border border-teal-100/60 rounded-3xl p-5 text-left max-w-sm mx-auto space-y-3">
-                    <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                      Instruksi Pembayaran Simulasi
-                    </p>
-                    <p className="text-[11px] text-teal-800 leading-relaxed font-medium">
-                      Karena akun Xendit ini berjalan di **Test Mode**, Anda dapat menyimulasikan keberhasilan transaksi dengan mengeklik tombol di bawah ini. Tombol ini didesain khusus agar memudahkan tim penilai kepatuhan Xendit menyelesaikan pengujian pembayaran.
-                    </p>
-                  </div>
+                  {!(typeof window !== 'undefined' && window.location.hostname === 'agrapos.vercel.app') && (
+                    <>
+                      <div className="bg-teal-50 border border-teal-100/60 rounded-3xl p-5 text-left max-w-sm mx-auto space-y-3">
+                        <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                          Instruksi Pembayaran Simulasi (Developer Mode)
+                        </p>
+                        <p className="text-[11px] text-teal-800 leading-relaxed font-medium">
+                          Anda dapat menyimulasikan keberhasilan pembayaran via webhook dengan mengeklik tombol di bawah ini. Tombol ini tersembunyi secara otomatis di lingkungan produksi demi kepatuhan regulasi Xendit.
+                        </p>
+                      </div>
 
-                  <button
-                    type="button" disabled={completingSignup}
-                    onClick={async () => {
-                      setCompletingSignup(true);
-                      setCheckoutError('');
-                      try {
-                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/register-paid-subscription`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            email,
-                            password,
-                            namaOwner: ownerName,
-                            namaToko: storeName,
-                            nomorHp: phone,
-                            planId: checkoutPlan.id
-                          })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || 'Gagal menyelesaikan pendaftaran langganan.');
-                        
-                        setCheckoutStep('success');
-                      } catch (err) {
-                        setCheckoutError(err.message || 'Gagal mendaftarkan akun. Coba email lain.');
-                      } finally {
-                        setCompletingSignup(false);
-                      }
-                    }}
-                    className="w-full max-w-sm mx-auto py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {completingSignup ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Memproses Aktivasi...
-                      </>
-                    ) : (
-                      'Simulasi Bayar Sukses (Test Mode)'
-                    )}
-                  </button>
+                      <button
+                        type="button" disabled={completingSignup}
+                        onClick={async () => {
+                          setCompletingSignup(true);
+                          setCheckoutError('');
+                          try {
+                            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/simulate-billing-payment`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                billingId
+                              })
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Gagal memicu simulasi pembayaran.');
+                            
+                            // Polling di background akan mendeteksi status paid dan mengaktifkan UI sukses secara otomatis!
+                          } catch (err) {
+                            setCheckoutError(err.message || 'Gagal memicu simulasi pembayaran.');
+                            setCompletingSignup(false);
+                          }
+                        }}
+                        className="w-full max-w-sm mx-auto py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {completingSignup ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Mengirim Simulasi...
+                          </>
+                        ) : (
+                          'Simulasikan Pembayaran Sukses (Developer)'
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 

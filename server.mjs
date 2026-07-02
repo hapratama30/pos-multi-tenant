@@ -610,6 +610,274 @@ app.post('/api/saas/register-paid-subscription', async (req, res) => {
   }
 });
 
+app.post('/api/saas/register-pending-subscription', async (req, res) => {
+  const { email, password, namaOwner, namaToko, nomorHp, planId, method, bankCode } = req.body;
+
+  if (!email || !password || !namaOwner || !namaToko || !nomorHp || !planId || !method) {
+    return res.status(400).json({ error: 'Data input tidak lengkap!' });
+  }
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if email already registered in staff
+    const { data: existingStaff } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+
+    if (existingStaff) {
+      return res.status(400).json({ error: 'Email ini sudah terdaftar di sistem.' });
+    }
+
+    // 1. Create Auth User
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      password: password,
+      email_confirm: true,
+      user_metadata: { name: namaOwner.trim(), role: 'Owner' }
+    });
+
+    if (authError) {
+      console.error('Auth User Creation Error:', authError.message);
+      return res.status(400).json({ error: authError.message || 'Gagal mendaftarkan user.' });
+    }
+
+    const uid = authData.user.id;
+
+    // 2. Create Tenant ID
+    const tenantId = 'T' + crypto.randomBytes(6).toString('hex').toUpperCase();
+
+    // 3. Insert Tenant (status: pending_payment, plan_id: free)
+    const { error: tError } = await supabase.from('tenants').insert({
+      tenant_id: tenantId,
+      tenant_name: namaToko.trim(),
+      phone: nomorHp.trim(),
+      status: 'pending_payment',
+      plan_id: 'free'
+    });
+
+    if (tError) {
+      console.error('Tenant DB Insert Error:', tError.message);
+      await supabase.auth.admin.deleteUser(uid);
+      return res.status(500).json({ error: 'Gagal membuat profil tenant.' });
+    }
+
+    // 4. Insert Staff/Owner
+    const { error: sError } = await supabase.from('staff').insert({
+      tenant_id: tenantId,
+      auth_user_id: uid,
+      name: namaOwner.trim(),
+      email: cleanEmail,
+      phone: nomorHp.trim(),
+      role: 'Owner',
+      status: 'Aktif'
+    });
+
+    if (sError) {
+      console.error('Staff DB Insert Error:', sError.message);
+      await supabase.from('tenants').delete().eq('tenant_id', tenantId);
+      await supabase.auth.admin.deleteUser(uid);
+      return res.status(500).json({ error: 'Gagal membuat profil owner.' });
+    }
+
+    // 5. Update Subscription to free first
+    await supabase.from('tenant_subscriptions').upsert({
+      tenant_id: tenantId,
+      plan_id: 'free',
+      status: 'active'
+    });
+
+    // Populate demo products
+    try {
+      const { data: mainOutlet } = await supabase
+        .from('outlets')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('is_main', true)
+        .maybeSingle();
+
+      const outletId = mainOutlet?.id || null;
+
+      const categories = [
+        { tenant_id: tenantId, name: 'Kopi & Latte', type: 'ritel', code: 'KOPI' },
+        { tenant_id: tenantId, name: 'Non-Kopi', type: 'ritel', code: 'NONKOPI' },
+        { tenant_id: tenantId, name: 'Cemilan', type: 'ritel', code: 'CEMILAN' }
+      ];
+      await supabase.from('product_categories').insert(categories);
+
+      const demoProducts = [
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Es Kopi Susu Gula Aren', price: 22000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Caffe Latte Art', price: 28000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Matcha Latte Premium', price: 26000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Chocolate Signature', price: 25000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Butter Croissant', price: 18000, category: 'Cemilan', unit: 'Pcs', is_active: true }
+      ];
+      await supabase.from('products').insert(demoProducts);
+    } catch (populateError) {
+      console.warn('Failed to populate initial demo products:', populateError.message);
+    }
+
+    // 6. Fetch Plan price
+    const { data: planData } = await supabase
+      .from('subscription_plans')
+      .select('price')
+      .eq('id', planId)
+      .maybeSingle();
+
+    const planPrice = planData?.price || 99000; // fallback default price if missing
+
+    // 7. Create billing invoice
+    const { data: billing, error: billingErr } = await supabase
+      .from('tenant_billing')
+      .insert({
+        tenant_id: tenantId,
+        plan_id: planId,
+        amount: planPrice,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (billingErr) {
+      console.error('Billing creation error:', billingErr.message);
+      // We don't need to delete user here because they got registered in free plan
+    }
+
+    // 8. Generate Xendit Payment
+    const referenceId = `BILL-${billing.id}`;
+
+    if (method === 'QRIS') {
+      const headers = {
+        ...xenditAuthHeader,
+        'api-version': '2022-07-31'
+      };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/qr_codes',
+        {
+          reference_id: referenceId,
+          type: 'DYNAMIC',
+          currency: 'IDR',
+          amount: Number(planPrice)
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        billingId: billing.id,
+        paymentData: {
+          qrString: response.data.qr_string,
+          paymentId: response.data.id,
+          referenceId
+        }
+      });
+    } else if (method === 'VA') {
+      const headers = { ...xenditAuthHeader };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/callback_virtual_accounts',
+        {
+          external_id: referenceId,
+          bank_code: bankCode.toUpperCase(),
+          name: namaOwner || 'AGRAPos Subscriber',
+          expected_amount: Number(planPrice),
+          is_closed: true
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        billingId: billing.id,
+        paymentData: {
+          accountNumber: response.data.account_number,
+          bankCode: response.data.bank_code,
+          paymentId: response.data.id,
+          referenceId
+        }
+      });
+    }
+
+    return res.status(400).json({ error: 'Metode pembayaran tidak valid.' });
+
+  } catch (error) {
+    console.error('Subscription pending signup error:', error.message);
+    return res.status(500).json({ error: error.message || 'Terjadi kesalahan sistem saat mendaftarkan langganan.' });
+  }
+});
+
+app.get('/api/saas/billing-status/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data: billing, error } = await supabase
+      .from('tenant_billing')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return res.status(200).json({
+      success: true,
+      paid: billing?.status === 'paid',
+      status: billing?.status || 'pending'
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/saas/simulate-billing-payment', async (req, res) => {
+  const { billingId } = req.body;
+  const isSandbox = (process.env.XENDIT_SECRET_KEY || '').includes('development') || 
+                    (process.env.XENDIT_SECRET_KEY || '').includes('test');
+
+  if (!isSandbox) {
+    return res.status(403).json({ error: 'Simulasi hanya diperbolehkan di Test Mode.' });
+  }
+
+  try {
+    const { data: billing, error: billingError } = await supabase
+      .from('tenant_billing')
+      .select('*')
+      .eq('id', billingId)
+      .single();
+
+    if (billingError || !billing) {
+      return res.status(404).json({ error: 'Billing ID tidak ditemukan.' });
+    }
+
+    if (billing.status !== 'paid') {
+      await supabase.from('tenant_billing').update({
+        status: 'paid',
+        payment_method: 'SIMULATOR_TEST',
+        paid_at: new Date().toISOString()
+      }).eq('id', billingId);
+
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      await supabase.from('tenants').update({
+        plan_id: billing.plan_id,
+        subscription_status: 'active',
+        subscription_end_date: endDate.toISOString()
+      }).eq('tenant_id', billing.tenant_id);
+
+      console.log(`[Simulator Webhook] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Simulasi sukses! Akun berhasil diaktifkan.'
+    });
+  } catch (err) {
+    console.error('Simulation error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/xendit/webhook-payment', async (req, res) => {
 
   const payload = req.body;
