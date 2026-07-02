@@ -2337,10 +2337,12 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                         <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">XENDIT DYNAMIC QRIS ⚡</span>
                                         <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id}</span>
 
-                                        <div className="mt-2.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-mono text-[8px] text-center w-full max-w-[200px]">
-                                          <span className="font-bold text-slate-600">Simulasi CLI:</span><br />
-                                          node simulate_payment.mjs {savedTransaction?.id} {Math.round(totalAkhir)}
-                                        </div>
+                                        {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                                          <div className="mt-2.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-mono text-[8px] text-center w-full max-w-[200px]">
+                                            <span className="font-bold text-slate-600">Simulasi CLI:</span><br />
+                                            node simulate_payment.mjs {savedTransaction?.id} {Math.round(totalAkhir)}
+                                          </div>
+                                        )}
                                       </div>
                                     ) : (
                                       <div className="text-center text-xs text-slate-400 font-bold">Gagal memuat QRIS.</div>
@@ -2480,33 +2482,35 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                 >
                                   🔄 Cek Status Pembayaran
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                          external_id: String(savedTransaction.id),
-                                          amount: totalAkhir,
-                                          bank_code: isVA ? xenditVaBank : undefined
-                                        })
-                                      });
-                                      if (response.ok) {
-                                        showToast('Simulasi Bayar Terkirim!', 'success');
-                                        setTimeout(() => checkPaymentStatus(false), 800);
-                                      } else {
-                                        showToast('Gagal memicu simulasi.', 'error');
+                                {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            external_id: String(savedTransaction.id),
+                                            amount: totalAkhir,
+                                            bank_code: isVA ? xenditVaBank : undefined
+                                          })
+                                        });
+                                        if (response.ok) {
+                                          showToast('Simulasi Bayar Terkirim!', 'success');
+                                          setTimeout(() => checkPaymentStatus(false), 800);
+                                        } else {
+                                          showToast('Gagal memicu simulasi.', 'error');
+                                        }
+                                      } catch (err) {
+                                        showToast('Gagal terhubung ke backend.', 'error');
                                       }
-                                    } catch (err) {
-                                      showToast('Gagal terhubung ke backend.', 'error');
-                                    }
-                                  }}
-                                  className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm"
-                                >
-                                  ⚡ Simulasikan Pembayaran Sukses (Sandbox)
-                                </button>
+                                    }}
+                                    className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm"
+                                  >
+                                    ⚡ Simulasikan Pembayaran Sukses (Sandbox)
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>

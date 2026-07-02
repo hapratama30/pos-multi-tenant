@@ -707,36 +707,40 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
                       
-                      <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] text-center w-full">
-                        <span className="font-bold text-slate-600">Simulasi CLI:</span><br/>
-                        node simulate_payment.mjs {tx.id} {Math.round(tx.total)}
-                      </div>
-                      
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                external_id: String(tx.id),
-                                amount: tx.total
-                              })
-                            });
-                            if (response.ok) {
-                              setActionMsg({ type: 'success', text: 'Simulasi Bayar Terkirim! Status akan terupdate otomatis.' });
-                            } else {
-                              setActionMsg({ type: 'error', text: 'Gagal memicu simulasi.' });
-                            }
-                          } catch (err) {
-                            setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
-                          }
-                        }}
-                        className="mt-2.5 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
-                      >
-                        ⚡ Simulasikan Pembayaran Sukses (Sandbox)
-                      </button>
+                      {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                        <>
+                          <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] text-center w-full">
+                            <span className="font-bold text-slate-600">Simulasi CLI:</span><br/>
+                            node simulate_payment.mjs {tx.id} {Math.round(tx.total)}
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    external_id: String(tx.id),
+                                    amount: tx.total
+                                  })
+                                });
+                                if (response.ok) {
+                                  setActionMsg({ type: 'success', text: 'Simulasi Bayar Terkirim! Status akan terupdate otomatis.' });
+                                } else {
+                                  setActionMsg({ type: 'error', text: 'Gagal memicu simulasi.' });
+                                }
+                              } catch (err) {
+                                setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
+                              }
+                            }}
+                            className="mt-2.5 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+                          >
+                            ⚡ Simulasikan Pembayaran Sukses (Sandbox)
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center text-xs text-slate-400 font-bold">Gagal memuat QRIS.</div>
