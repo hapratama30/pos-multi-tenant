@@ -49,6 +49,17 @@ export default function App() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeTriggerModule, setUpgradeTriggerModule] = useState('');
+  
+  // Custom states for upgrade checkout flow inside modal
+  const [upgradeStep, setUpgradeStep] = useState('plans'); // 'plans' | 'checkout' | 'payment' | 'success'
+  const [selectedPlan, setSelectedPlan] = useState(null); // { id: 'pro' | 'enterprise', name: string, price: number }
+  const [upgradePaymentMethod, setUpgradePaymentMethod] = useState('QRIS'); // 'QRIS' | 'VA'
+  const [upgradeBankCode, setUpgradeBankCode] = useState('BCA'); // 'BCA' | 'MANDIRI' | 'BNI' | 'BRI'
+  const [upgradeLoadingPayment, setUpgradeLoadingPayment] = useState(false);
+  const [upgradePaymentData, setUpgradePaymentData] = useState(null);
+  const [upgradeBillingId, setUpgradeBillingId] = useState(null);
+  const [upgradeCompletingSignup, setUpgradeCompletingSignup] = useState(false);
+  const [upgradeError, setUpgradeError] = useState('');
 
   const [activeSubTab, setActiveSubTab] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -63,8 +74,42 @@ export default function App() {
 
   const triggerUpgrade = (moduleName) => {
     setUpgradeTriggerModule(moduleName || '');
+    setUpgradeStep('plans');
+    setSelectedPlan(null);
+    setUpgradePaymentData(null);
+    setUpgradeBillingId(null);
+    setUpgradeError('');
+    setUpgradeLoadingPayment(false);
+    setUpgradeCompletingSignup(false);
     setShowUpgradeModal(true);
   };
+
+  useEffect(() => {
+    if (upgradeStep !== 'payment' || !upgradeBillingId) return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/billing-status/${upgradeBillingId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.success && data.paid) {
+          if (isSubscribed) {
+            clearInterval(interval);
+            setUpgradeStep('success');
+          }
+        }
+      } catch (err) {
+        console.error('Polling upgrade billing status error:', err);
+      }
+    }, 3000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [upgradeStep, upgradeBillingId]);
 
   const [platformSettings, setPlatformSettings] = useState(null);
   const [featurePopup, setFeaturePopup] = useState(null);
@@ -1073,122 +1118,410 @@ export default function App() {
               }
             `}} />
             
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '18px',
-                background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '26px', margin: '0 auto 12px', border: '1px solid #fde68a'
-              }}>
-                ⭐
-              </div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
-                Fitur Premium Terkunci
-              </h3>
-              <p style={{ margin: '6px 0 0 0', fontSize: '12.5px', color: '#64748b', fontWeight: 500, lineHeight: 1.5 }}>
-                Modul <strong style={{ color: '#0d9488', textTransform: 'uppercase' }}>
-                  {(() => {
-                    const labels = {
-                      'pos': 'Aplikasi Kasir POS',
-                      'history': 'Riwayat Transaksi Lengkap',
-                      'catalog': 'Katalog Produk Mandiri',
-                      'variants': 'Varian & Ekstra Produk',
-                      'customers': 'Manajemen Data Pelanggan',
-                      'stock': 'Manajemen Stok Bahan Baku',
-                      'discounts': 'Sistem Diskon & Promo',
-                      'expenses': 'Beli & Pengeluaran Toko',
-                      'reports': 'Laporan Analitik & Laba',
-                      'staff': 'Manajemen Akun Karyawan',
-                      'outlets': 'Multi-Outlet / Multi-Cabang',
-                      'shifts': 'Shift Kasir & Rekonsiliasi Saldo',
-                      'ppob': 'Penjualan Produk Digital PPOB'
-                    };
-                    return labels[upgradeTriggerModule] || upgradeTriggerModule;
-                  })()}
-                </strong> memerlukan upgrade paket toko Anda. Pilih paket langganan Anda di bawah ini:
-              </p>
-            </div>
+            {/* ── LANKAH 1: PILIH PAKET ── */}
+            {upgradeStep === 'plans' && (() => {
+              const activePlan = currentUser?.plan_id || 'free';
+              const showOnlyEnterprise = activePlan === 'pro';
 
-            {/* Plan options cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
-              {/* PRO PLAN */}
-              <div style={{
-                border: '2px solid #0d9488', borderRadius: '20px', padding: '16px',
-                background: 'linear-gradient(to bottom, #ffffff, #f0fdfa)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                position: 'relative'
-              }}>
-                <span style={{
-                  position: 'absolute', top: '-8px', right: '10px',
-                  background: '#0d9488', color: 'white', fontSize: '7.5px',
-                  fontWeight: 900, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '99px',
-                  letterSpacing: '0.05em'
-                }}>POPULER</span>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 900, color: '#0f766e' }}>PAKET PRO</h4>
-                  <p style={{ margin: '2px 0 10px 0', fontSize: '9px', color: '#64748b', fontWeight: 500 }}>Untuk Bisnis Berkembang</p>
-                  <div style={{ fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>Rp 99k<span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>/bln</span></div>
+              return (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                    <div style={{
+                      width: '56px', height: '56px', borderRadius: '18px',
+                      background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '26px', margin: '0 auto 12px', border: '1px solid #fde68a'
+                    }}>
+                      ⭐
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+                      Fitur Premium Terkunci
+                    </h3>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '12.5px', color: '#64748b', fontWeight: 500, lineHeight: 1.5 }}>
+                      Modul <strong style={{ color: '#0d9488', textTransform: 'uppercase' }}>
+                        {(() => {
+                          const labels = {
+                            'pos': 'Aplikasi Kasir POS',
+                            'history': 'Riwayat Transaksi Lengkap',
+                            'catalog': 'Katalog Produk Mandiri',
+                            'variants': 'Varian & Ekstra Produk',
+                            'customers': 'Manajemen Data Pelanggan',
+                            'stock': 'Manajemen Stok Bahan Baku',
+                            'discounts': 'Sistem Diskon & Promo',
+                            'expenses': 'Beli & Pengeluaran Toko',
+                            'reports': 'Laporan Analitik & Laba',
+                            'staff': 'Manajemen Akun Karyawan',
+                            'outlets': 'Multi-Outlet / Multi-Cabang',
+                            'shifts': 'Shift Kasir & Rekonsiliasi Saldo',
+                            'ppob': 'Penjualan Produk Digital PPOB'
+                          };
+                          return labels[upgradeTriggerModule] || upgradeTriggerModule;
+                        })()}
+                      </strong> memerlukan upgrade paket toko Anda. Pilih paket langganan Anda di bawah ini:
+                    </p>
+                  </div>
+
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: showOnlyEnterprise ? '1fr' : '1fr 1fr', 
+                    gap: '14px', 
+                    marginBottom: '20px' 
+                  }}>
+                    {/* PRO PLAN (Hanya jika belum Pro) */}
+                    {!showOnlyEnterprise && (
+                      <div style={{
+                        border: '2px solid #0d9488', borderRadius: '20px', padding: '16px',
+                        background: 'linear-gradient(to bottom, #ffffff, #f0fdfa)',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                        position: 'relative'
+                      }}>
+                        <span style={{
+                          position: 'absolute', top: '-8px', right: '10px',
+                          background: '#0d9488', color: 'white', fontSize: '7.5px',
+                          fontWeight: 900, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '99px',
+                          letterSpacing: '0.05em'
+                        }}>POPULER</span>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 900, color: '#0f766e' }}>PAKET PRO</h4>
+                          <p style={{ margin: '2px 0 10px 0', fontSize: '9px', color: '#64748b', fontWeight: 500 }}>Untuk Bisnis Berkembang</p>
+                          <div style={{ fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>Rp 55.000<span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>/bln</span></div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedPlan({ id: 'pro', name: 'Paket Pro', price: 55000 });
+                            setUpgradeStep('checkout');
+                          }}
+                          style={{
+                            marginTop: '12px', width: '100%', padding: '8px 0',
+                            background: '#0d9488', color: 'white', border: 'none',
+                            borderRadius: '10px', fontSize: '10.5px', fontWeight: 800,
+                            cursor: 'pointer', boxShadow: '0 4px 10px rgba(13,148,136,0.2)'
+                          }}
+                        >
+                          Pilih Paket PRO
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ENTERPRISE PLAN */}
+                    <div style={{
+                      border: '2px solid #7c3aed', borderRadius: '20px', padding: '16px',
+                      background: 'linear-gradient(to bottom, #ffffff, #faf5ff)',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      position: 'relative'
+                    }}>
+                      <span style={{
+                        position: 'absolute', top: '-8px', right: '10px',
+                        background: '#7c3aed', color: 'white', fontSize: '7.5px',
+                        fontWeight: 900, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '99px',
+                        letterSpacing: '0.05em'
+                      }}>UNLIMITED</span>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 900, color: '#6d28d9' }}>ENTERPRISE</h4>
+                        <p style={{ margin: '2px 0 10px 0', fontSize: '9px', color: '#64748b', fontWeight: 500 }}>Multi-Cabang & Retail</p>
+                        <div style={{ fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>Rp 299.000<span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>/bln</span></div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedPlan({ id: 'enterprise', name: 'Paket Enterprise', price: 299000 });
+                          setUpgradeStep('checkout');
+                        }}
+                        style={{
+                          marginTop: '12px', width: '100%', padding: '8px 0',
+                          background: '#7c3aed', color: 'white', border: 'none',
+                          borderRadius: '10px', fontSize: '10.5px', fontWeight: 800,
+                          cursor: 'pointer', boxShadow: '0 4px 10px rgba(124,58,237,0.2)'
+                        }}
+                      >
+                        Pilih Enterprise
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cancel button */}
+                  <button
+                    onClick={() => setShowUpgradeModal(false)}
+                    style={{
+                      width: '100%', padding: '10px 0', background: '#f1f5f9',
+                      color: '#64748b', border: 'none', borderRadius: '12px',
+                      fontSize: '11px', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    Kembali ke Aplikasi
+                  </button>
+                </>
+              );
+            })()}
+
+            {/* ── LANGKAH 2: PILIH PEMBAYARAN ── */}
+            {upgradeStep === 'checkout' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase' }}>
+                    Checkout Langganan
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                    Membeli {selectedPlan?.name} (Rp {selectedPlan?.price.toLocaleString('id-ID')}/bulan)
+                  </p>
                 </div>
+
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    Metode Pembayaran (Xendit)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setUpgradePaymentMethod('QRIS')}
+                      style={{
+                        padding: '12px', borderRadius: '14px', border: upgradePaymentMethod === 'QRIS' ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                        background: upgradePaymentMethod === 'QRIS' ? '#f0fdfa' : '#ffffff',
+                        fontSize: '11.5px', fontWeight: 800, color: upgradePaymentMethod === 'QRIS' ? '#0f766e' : '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      QRIS / E-Money
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUpgradePaymentMethod('VA')}
+                      style={{
+                        padding: '12px', borderRadius: '14px', border: upgradePaymentMethod === 'VA' ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                        background: upgradePaymentMethod === 'VA' ? '#f0fdfa' : '#ffffff',
+                        fontSize: '11.5px', fontWeight: 800, color: upgradePaymentMethod === 'VA' ? '#0f766e' : '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Virtual Account
+                    </button>
+                  </div>
+                </div>
+
+                {upgradePaymentMethod === 'VA' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      Pilih Bank Transfer
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                      {['BCA', 'MANDIRI', 'BNI', 'BRI'].map(bank => (
+                        <button
+                          key={bank} type="button"
+                          onClick={() => setUpgradeBankCode(bank)}
+                          style={{
+                            padding: '8px 0', borderRadius: '10px', border: upgradeBankCode === bank ? '2px solid #0d9488' : '1px solid #e2e8f0',
+                            background: upgradeBankCode === bank ? '#f0fdfa' : '#ffffff',
+                            fontSize: '9.5px', fontWeight: 900, color: upgradeBankCode === bank ? '#0f766e' : '#475569',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {bank}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {upgradeError && (
+                  <p style={{ margin: 0, fontSize: '10.5px', color: '#ef4444', fontWeight: 700, textAlign: 'center' }}>
+                    ❌ {upgradeError}
+                  </p>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeStep('plans')}
+                    style={{
+                      padding: '12px 0', background: '#f1f5f9', color: '#475569',
+                      border: 'none', borderRadius: '14px', fontSize: '11px', fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Kembali
+                  </button>
+                  <button
+                    type="button" disabled={upgradeLoadingPayment}
+                    onClick={async () => {
+                      setUpgradeLoadingPayment(true);
+                      setUpgradeError('');
+                      try {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/create-upgrade-billing`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            tenantId: currentUser?.tenant_id,
+                            planId: selectedPlan?.id,
+                            method: upgradePaymentMethod,
+                            bankCode: upgradeBankCode
+                          })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Gagal generate pembayaran.');
+
+                        setUpgradePaymentData(data.paymentData);
+                        setUpgradeBillingId(data.billingId);
+                        setUpgradeStep('payment');
+                      } catch (err) {
+                        setUpgradeError(err.message || 'Gagal memproses pembayaran.');
+                      } finally {
+                        setUpgradeLoadingPayment(false);
+                      }
+                    }}
+                    style={{
+                      padding: '12px 0', background: '#0d9488', color: 'white',
+                      border: 'none', borderRadius: '14px', fontSize: '11px', fontWeight: 900,
+                      textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                    }}
+                  >
+                    {upgradeLoadingPayment ? (
+                      <>
+                        <div style={{ width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        Memproses...
+                      </>
+                    ) : 'Bayar Sekarang'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── LANGKAH 3: TAMPILKAN INSTRUKSI BAYAR (VA/QRIS) ── */}
+            {upgradeStep === 'payment' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase' }}>
+                    Menunggu Pembayaran
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+                    Silakan selesaikan pembayaran paket {selectedPlan?.name}
+                  </p>
+                </div>
+
+                {/* QRIS */}
+                {upgradePaymentMethod === 'QRIS' && upgradePaymentData?.qrString && (
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+                    <div style={{ background: 'white', padding: '8px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upgradePaymentData.qrString)}`}
+                        alt="QRIS Code"
+                        style={{ width: '160px', height: '160px', display: 'block' }}
+                      />
+                    </div>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '9px', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>
+                      Scan QR di atas via GoPay, OVO, Dana, ShopeePay, atau Mobile Banking
+                    </p>
+                  </div>
+                )}
+
+                {/* Virtual Account */}
+                {upgradePaymentMethod === 'VA' && upgradePaymentData?.accountNumber && (
+                  <div style={{ width: '100%', background: '#f8fafc', padding: '16px', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
+                      Transfer VA {upgradePaymentData.bankCode}
+                    </span>
+                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#0d9488', letterSpacing: '0.05em' }}>
+                      {upgradePaymentData.accountNumber}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(upgradePaymentData.accountNumber);
+                        alert('Nomor Virtual Account berhasil disalin!');
+                      }}
+                      style={{
+                        padding: '6px 12px', background: '#e2e8f0', color: '#475569',
+                        border: 'none', borderRadius: '8px', fontSize: '9.5px', fontWeight: 800,
+                        cursor: 'pointer', width: 'fit-content', margin: '0 auto'
+                      }}
+                    >
+                      Salin Nomor
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ width: '100%', padding: '10px 14px', background: '#f0fdfa', borderRadius: '16px', border: '1px solid #ccfbf1', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: '10px', color: '#0f766e', fontWeight: 800, textTransform: 'uppercase' }}>
+                    🛠️ Developer Mode (Simulasi Sandbox)
+                  </p>
+                  <p style={{ margin: 0, fontSize: '9.5px', color: '#0d9488', fontWeight: 500, lineHeight: 1.4 }}>
+                    Anda bisa mengeklik tombol di bawah untuk menyimulasikan kelunasan tagihan upgrade ini tanpa uang sungguhan.
+                  </p>
+                  <button
+                    disabled={upgradeCompletingSignup}
+                    onClick={async () => {
+                      setUpgradeCompletingSignup(true);
+                      setUpgradeError('');
+                      try {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/simulate-billing-payment`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ billingId: upgradeBillingId })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Gagal memicu simulasi.');
+                      } catch (err) {
+                        setUpgradeError(err.message || 'Gagal memicu simulasi.');
+                        setUpgradeCompletingSignup(false);
+                      }
+                    }}
+                    style={{
+                      marginTop: '6px', width: '100%', padding: '8px 0', background: '#0d9488',
+                      color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '9.5px',
+                      fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer'
+                    }}
+                  >
+                    {upgradeCompletingSignup ? 'Menyambungkan...' : 'Simulasikan Sukses (Sandbox)'}
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => {
-                    const tokoName = currentUser?.tenant_name || 'Toko Saya';
-                    const msg = encodeURIComponent(`Halo Admin AGRAPos, saya ingin upgrade ke Paket PRO untuk Toko "${tokoName}" (Tenant ID: ${tenantId}) agar dapat mengakses fitur premium.`);
-                    window.open(`https://wa.me/6285695660902?text=${msg}`, '_blank');
-                    setShowUpgradeModal(false);
-                  }}
+                  type="button"
+                  onClick={() => setUpgradeStep('checkout')}
                   style={{
-                    marginTop: '12px', width: '100%', padding: '8px 0',
-                    background: '#0d9488', color: 'white', border: 'none',
-                    borderRadius: '10px', fontSize: '10.5px', fontWeight: 800,
-                    cursor: 'pointer', boxShadow: '0 4px 10px rgba(13,148,136,0.2)'
+                    width: '100%', padding: '10px 0', background: '#f1f5f9', color: '#64748b',
+                    border: 'none', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
+                    cursor: 'pointer'
                   }}
                 >
-                  Pilih Paket PRO
+                  Kembali ke Checkout
                 </button>
               </div>
+            )}
 
-              {/* ENTERPRISE PLAN */}
-              <div style={{
-                border: '1px solid #e2e8f0', borderRadius: '20px', padding: '16px',
-                background: '#ffffff',
-                display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-              }}>
+            {/* ── LANGKAH 4: UPGRADE SUKSES ── */}
+            {upgradeStep === 'success' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{
+                  width: '56px', height: '56px', borderRadius: '50%',
+                  background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '28px', border: '2px solid #bbf7d0', animation: 'scaleUp 0.3s ease-out'
+                }}>
+                  ✅
+                </div>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 900, color: '#7c3aed' }}>ENTERPRISE</h4>
-                  <p style={{ margin: '2px 0 10px 0', fontSize: '9px', color: '#64748b', fontWeight: 500 }}>Multi-Cabang & Retail</p>
-                  <div style={{ fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>Rp 299k<span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>/bln</span></div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>
+                    Pembayaran Berhasil!
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>
+                    Selamat! Akun toko Anda sudah sukses ditingkatkan ke **{selectedPlan?.name}**. Seluruh menu premium yang sebelumnya dikunci sekarang sudah langsung terbuka!
+                  </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
-                    const tokoName = currentUser?.tenant_name || 'Toko Saya';
-                    const msg = encodeURIComponent(`Halo Admin AGRAPos, saya tertarik dengan Paket ENTERPRISE untuk Toko "${tokoName}" (Tenant ID: ${tenantId}) agar dapat membuka seluruh fitur tanpa batas.`);
-                    window.open(`https://wa.me/6285695660902?text=${msg}`, '_blank');
                     setShowUpgradeModal(false);
+                    window.location.reload();
                   }}
                   style={{
-                    marginTop: '12px', width: '100%', padding: '8px 0',
-                    background: '#7c3aed', color: 'white', border: 'none',
-                    borderRadius: '10px', fontSize: '10.5px', fontWeight: 800,
-                    cursor: 'pointer', boxShadow: '0 4px 10px rgba(124,58,237,0.2)'
+                    width: '100%', padding: '12px 0', background: '#16a34a', color: 'white',
+                    border: 'none', borderRadius: '14px', fontSize: '11px', fontWeight: 900,
+                    textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 12px rgba(22,163,74,0.3)'
                   }}
                 >
-                  Pilih Enterprise
+                  Selesai & Buka Fitur Premium
                 </button>
               </div>
-            </div>
+            )}
 
-            {/* Cancel button */}
-            <button
-              onClick={() => setShowUpgradeModal(false)}
-              style={{
-                width: '100%', padding: '10px 0', background: '#f1f5f9',
-                color: '#64748b', border: 'none', borderRadius: '12px',
-                fontSize: '11px', fontWeight: 700, cursor: 'pointer'
-              }}
-            >
-              Kembali ke Aplikasi
-            </button>
           </div>
         </div>
       )}

@@ -934,6 +934,118 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
   }
 });
 
+app.post('/api/saas/create-upgrade-billing', async (req, res) => {
+  const { tenantId, planId, method, bankCode } = req.body;
+
+  if (!tenantId || !planId || !method) {
+    return res.status(400).json({ error: 'Data input tidak lengkap!' });
+  }
+
+  try {
+    // 1. Fetch tenant to make sure it exists
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('tenant_name')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant tidak ditemukan.' });
+    }
+
+    // 2. Fetch plan price
+    const { data: planData } = await supabase
+      .from('subscription_plans')
+      .select('price_monthly')
+      .eq('id', planId)
+      .maybeSingle();
+
+    if (!planData) {
+      return res.status(404).json({ error: 'Plan tidak ditemukan.' });
+    }
+
+    const planPrice = planData.price_monthly;
+
+    // 3. Create billing invoice in database
+    const { data: billing, error: billingErr } = await supabase
+      .from('tenant_billing')
+      .insert({
+        tenant_id: tenantId,
+        plan_id: planId,
+        amount: planPrice,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (billingErr) throw billingErr;
+
+    const referenceId = `BILL-${billing.id}`;
+
+    // 4. Create payment in Xendit (directly on Master, no subaccount header!)
+    if (method === 'QRIS') {
+      const headers = {
+        ...xenditAuthHeader,
+        'api-version': '2022-07-31'
+      };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/qr_codes',
+        {
+          reference_id: referenceId,
+          type: 'DYNAMIC',
+          currency: 'IDR',
+          amount: Number(planPrice)
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        billingId: billing.id,
+        paymentData: {
+          qrString: response.data.qr_string,
+          paymentId: response.data.id,
+          referenceId
+        }
+      });
+    } else if (method === 'VA') {
+      const headers = { ...xenditAuthHeader };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/callback_virtual_accounts',
+        {
+          external_id: referenceId,
+          bank_code: bankCode.toUpperCase(),
+          name: tenant.tenant_name || 'AGRAPos Subscriber',
+          expected_amount: Number(planPrice),
+          is_closed: true
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        billingId: billing.id,
+        paymentData: {
+          accountNumber: response.data.account_number,
+          bankCode: response.data.bank_code,
+          paymentId: response.data.id,
+          referenceId
+        }
+      });
+    }
+
+    return res.status(400).json({ error: 'Metode pembayaran tidak valid.' });
+  } catch (error) {
+    console.error('Error creating upgrade billing:', error.response?.data || error.message);
+    return res.status(500).json({
+      error: error.response?.data?.message || error.message || 'Gagal generate pembayaran upgrade dari Xendit.',
+    });
+  }
+});
+
+
 app.post('/api/xendit/webhook-payment', async (req, res) => {
 
   const payload = req.body;
