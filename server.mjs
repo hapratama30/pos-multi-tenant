@@ -432,7 +432,7 @@ app.post('/api/xendit/simulate-va-payment', async (req, res) => {
     }
     console.log(`[Simulate VA] externalId: ${externalId}, amount: ${amount}, subaccountId: ${subaccountId}`);
     const response = await axios.post(
-      `https://api.xendit.co/callback_virtual_accounts/${externalId}/simulate_payment`,
+      `https://api.xendit.co/callback_virtual_accounts/external_id=${externalId}/simulate_payment`,
       { amount: Number(amount) },
       { headers }
     );
