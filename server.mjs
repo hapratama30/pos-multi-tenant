@@ -448,6 +448,14 @@ app.post('/api/xendit/simulate-va-payment', async (req, res) => {
   }
 });
 
+app.get('/api/xendit/check-full-key', (req, res) => {
+  const key = process.env.XENDIT_SECRET_KEY || '';
+  return res.json({
+    suffix: key.substring(key.length - 15),
+    length: key.length
+  });
+});
+
 app.post('/api/xendit/create-subscription-payment', async (req, res) => {
   const { method, bankCode, amount, name, email } = req.body;
 
