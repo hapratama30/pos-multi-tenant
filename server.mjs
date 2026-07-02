@@ -886,17 +886,83 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
       return res.status(404).json({ error: 'Billing ID tidak ditemukan.' });
     }
 
-    if (billing.status !== 'paid') {
-      await supabase.from('tenant_billing').update({
-        status: 'paid',
-        payment_method: 'SIMULATOR_TEST',
-        paid_at: new Date().toISOString()
-      }).eq('id', billingId);
+    if (billing.status === 'paid') {
+      return res.status(200).json({ success: true, message: 'Billing sudah berstatus paid.' });
+    }
 
+    // Cari Xendit QR ID dari reference_id BILL-{billingId}
+    const referenceId = `BILL-${billingId}`;
+
+    // Cek apakah ada QR code yang terdaftar di Xendit dengan reference_id ini
+    // Kita panggil Xendit Get QR Code by reference_id
+    let xenditQrId = null;
+    let xenditVaId = null;
+    let paymentMethod = 'QRIS';
+
+    try {
+      // Coba ambil QR code dari Xendit
+      const qrResponse = await axios.get(
+        `https://api.xendit.co/qr_codes?reference_id=${referenceId}`,
+        { headers: { ...xenditAuthHeader, 'api-version': '2022-07-31' } }
+      );
+      if (qrResponse.data?.data?.length > 0) {
+        xenditQrId = qrResponse.data.data[0].id;
+        paymentMethod = 'QRIS';
+      }
+    } catch (qrErr) {
+      console.log('[Simulate] QR lookup failed, trying VA:', qrErr.response?.data?.error_code || qrErr.message);
+    }
+
+    if (!xenditQrId) {
+      // Coba cari VA
+      try {
+        const vaResponse = await axios.get(
+          `https://api.xendit.co/callback_virtual_accounts?external_id=${referenceId}`,
+          { headers: xenditAuthHeader }
+        );
+        if (vaResponse.data?.id) {
+          xenditVaId = vaResponse.data.id;
+          paymentMethod = 'VA';
+        }
+      } catch (vaErr) {
+        console.log('[Simulate] VA lookup failed:', vaErr.response?.data?.error_code || vaErr.message);
+      }
+    }
+
+    if (xenditQrId) {
+      // Simulasi pembayaran QRIS via Xendit API
+      console.log(`[Simulate] Calling Xendit QRIS simulate for QR ID: ${xenditQrId}`);
+      await axios.post(
+        `https://api.xendit.co/qr_codes/${xenditQrId}/payments/simulate`,
+        { amount: billing.amount },
+        { headers: { ...xenditAuthHeader, 'api-version': '2022-07-31' } }
+      );
+      console.log(`[Simulate] Xendit QRIS simulate called. Xendit will send webhook to activate tenant.`);
+      return res.status(200).json({
+        success: true,
+        message: 'Simulasi QRIS dikirim ke Xendit. Webhook akan segera mengaktifkan akun Anda.',
+        method: 'QRIS'
+      });
+    } else if (xenditVaId) {
+      // Simulasi pembayaran VA via Xendit API
+      console.log(`[Simulate] Calling Xendit VA simulate for VA ID: ${xenditVaId}`);
+      await axios.post(
+        `https://api.xendit.co/callback_virtual_accounts/external_id=${referenceId}/simulate_payment`,
+        { amount: billing.amount },
+        { headers: xenditAuthHeader }
+      );
+      console.log(`[Simulate] Xendit VA simulate called. Webhook will activate tenant.`);
+      return res.status(200).json({
+        success: true,
+        message: 'Simulasi VA dikirim ke Xendit. Webhook akan segera mengaktifkan akun Anda.',
+        method: 'VA'
+      });
+    } else {
+      // Fallback: tidak ada QR/VA di Xendit — update DB langsung (developer mode)
+      console.log(`[Simulate] No Xendit payment found for ${referenceId}. Falling back to direct DB update.`);
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + 1);
 
-      // Fetch plan features
       const { data: planData } = await supabase
         .from('subscription_plans')
         .select('features')
@@ -904,6 +970,12 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
         .maybeSingle();
 
       const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+
+      await supabase.from('tenant_billing').update({
+        status: 'paid',
+        payment_method: 'SIMULATOR_TEST',
+        paid_at: new Date().toISOString()
+      }).eq('id', billingId);
 
       await supabase.from('tenants').update({
         status: 'active',
@@ -921,18 +993,18 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
         updated_at: new Date().toISOString()
       });
 
-      console.log(`[Simulator Webhook] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id} with modules: ${JSON.stringify(planFeatures)}`);
+      return res.status(200).json({
+        success: true,
+        message: 'Simulasi sukses (fallback DB)! Akun berhasil diaktifkan.',
+        method: 'FALLBACK'
+      });
     }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Simulasi sukses! Akun berhasil diaktifkan.'
-    });
   } catch (err) {
-    console.error('Simulation error:', err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('Simulation error:', err.response?.data || err.message);
+    return res.status(500).json({ error: err.response?.data?.message || err.message });
   }
 });
+
 
 app.post('/api/saas/create-upgrade-billing', async (req, res) => {
   const { tenantId, planId, method, bankCode } = req.body;
