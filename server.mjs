@@ -896,11 +896,21 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + 1);
 
+      // Fetch plan features
+      const { data: planData } = await supabase
+        .from('subscription_plans')
+        .select('features')
+        .eq('id', billing.plan_id)
+        .maybeSingle();
+
+      const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+
       await supabase.from('tenants').update({
         status: 'active',
         plan_id: billing.plan_id,
         subscription_status: 'active',
-        subscription_end_date: endDate.toISOString()
+        subscription_end_date: endDate.toISOString(),
+        enabled_modules: planFeatures
       }).eq('tenant_id', billing.tenant_id);
 
       await supabase.from('tenant_subscriptions').upsert({
@@ -911,7 +921,7 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
         updated_at: new Date().toISOString()
       });
 
-      console.log(`[Simulator Webhook] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
+      console.log(`[Simulator Webhook] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id} with modules: ${JSON.stringify(planFeatures)}`);
     }
 
     return res.status(200).json({
@@ -994,11 +1004,21 @@ app.post('/api/xendit/webhook-payment', async (req, res) => {
           const endDate = new Date();
           endDate.setMonth(endDate.getMonth() + 1);
 
+          // Fetch plan features
+          const { data: planData } = await supabase
+            .from('subscription_plans')
+            .select('features')
+            .eq('id', billing.plan_id)
+            .maybeSingle();
+
+          const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+
           await supabase.from('tenants').update({
             status: 'active',
             plan_id: billing.plan_id,
             subscription_status: 'active',
-            subscription_end_date: endDate.toISOString()
+            subscription_end_date: endDate.toISOString(),
+            enabled_modules: planFeatures
           }).eq('tenant_id', billing.tenant_id);
 
           await supabase.from('tenant_subscriptions').upsert({
@@ -1009,7 +1029,7 @@ app.post('/api/xendit/webhook-payment', async (req, res) => {
             updated_at: new Date().toISOString()
           });
 
-          console.log(`[Webhook SaaS] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
+          console.log(`[Webhook SaaS] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id} with modules: ${JSON.stringify(planFeatures)}`);
         }
       } catch (err) {
         console.error('[Webhook SaaS Billing Error]', err.message);
