@@ -1411,7 +1411,7 @@ export default function App() {
                     flexDirection: 'column',
                     gap: '12px'
                   }}>
-                    {/* QRIS Header */}
+                    {/* QRIS Header dengan Logo */}
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -1419,15 +1419,15 @@ export default function App() {
                       borderBottom: '1.5px solid #f1f5f9',
                       paddingBottom: '8px'
                     }}>
-                      <img 
-                        src="/qris-logo.png" 
-                        alt="QRIS" 
-                        style={{ height: '22px', objectFit: 'contain' }} 
-                      />
-                      <img 
-                        src="/gpn-logo.png" 
-                        alt="GPN" 
-                        style={{ height: '24px', objectFit: 'contain' }} 
+                      {/* Logo QRIS */}
+                      <div style={{ fontSize: '18px', fontWeight: 900, color: '#E31837', fontFamily: 'Arial Black, Arial, sans-serif', letterSpacing: '-0.02em' }}>
+                        QRIS
+                      </div>
+                      {/* Logo GPN */}
+                      <img
+                        src="https://i.ibb.co.com/S4PL5jzX/OIP-removebg-preview.png"
+                        alt="GPN"
+                        style={{ height: '32px', objectFit: 'contain' }}
                       />
                     </div>
 
