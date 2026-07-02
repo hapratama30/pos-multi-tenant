@@ -886,6 +886,7 @@ export default function App() {
             onShowToast={showNotification}
             onTriggerUpgrade={triggerUpgrade}
             onTriggerFeaturePopup={triggerFeaturePopup}
+            platformSettings={platformSettings}
           />
         )}
         

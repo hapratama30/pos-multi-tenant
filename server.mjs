@@ -245,6 +245,14 @@ app.get('/api/xendit/account/:id', async (req, res) => {
 
 app.post('/api/xendit/webhook-account-update', async (req, res) => {
   const webhookData = req.body;
+  const callbackToken = req.headers['x-callback-token'];
+
+  // Verifikasi Callback Token jika dikonfigurasi di env
+  const expectedToken = process.env.XENDIT_CALLBACK_TOKEN;
+  if (expectedToken && callbackToken !== expectedToken) {
+    console.warn(`[Webhook Account Update] Callback token tidak cocok. Dikirim: ${callbackToken}`);
+    return res.status(401).send('Unauthorized callback token');
+  }
 
   if (webhookData.status === 'LIVE') {
     const xenditAccountId = webhookData.id;
@@ -411,7 +419,199 @@ app.post('/api/xendit/create-va', async (req, res) => {
   }
 });
 
+app.post('/api/xendit/create-subscription-payment', async (req, res) => {
+  const { method, bankCode, amount, name, email } = req.body;
+
+  if (!method || !amount) {
+    return res.status(400).json({ error: 'Data input tidak lengkap!' });
+  }
+
+  try {
+    const referenceId = `sub-payment-${Date.now()}`;
+
+    if (method === 'QRIS') {
+      const headers = {
+        ...xenditAuthHeader,
+        'api-version': '2022-07-31'
+      };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/qr_codes',
+        {
+          reference_id: referenceId,
+          type: 'DYNAMIC',
+          currency: 'IDR',
+          amount: Number(amount)
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        qrString: response.data.qr_string,
+        paymentId: response.data.id,
+        referenceId
+      });
+    } else if (method === 'VA') {
+      const headers = { ...xenditAuthHeader };
+      
+      const response = await axios.post(
+        'https://api.xendit.co/callback_virtual_accounts',
+        {
+          external_id: referenceId,
+          bank_code: bankCode.toUpperCase(),
+          name: name || 'AGRAPos Subscriber',
+          expected_amount: Number(amount),
+          is_closed: true
+        },
+        { headers }
+      );
+
+      return res.status(200).json({
+        success: true,
+        accountNumber: response.data.account_number,
+        bankCode: response.data.bank_code,
+        paymentId: response.data.id,
+        referenceId
+      });
+    }
+
+    return res.status(400).json({ error: 'Metode pembayaran tidak valid.' });
+  } catch (error) {
+    console.error('Error Create Subscription Payment Xendit:', error.response?.data || error.message);
+    return res.status(500).json({
+      error: error.response?.data?.message || error.message || 'Gagal generate pembayaran dari Xendit.',
+    });
+  }
+});
+
+app.post('/api/saas/register-paid-subscription', async (req, res) => {
+  const { email, password, namaOwner, namaToko, nomorHp, planId } = req.body;
+
+  if (!email || !password || !namaOwner || !namaToko || !nomorHp || !planId) {
+    return res.status(400).json({ error: 'Data input tidak lengkap!' });
+  }
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if email already registered in staff
+    const { data: existingStaff } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+
+    if (existingStaff) {
+      return res.status(400).json({ error: 'Email ini sudah terdaftar di sistem.' });
+    }
+
+    // 1. Create Auth User
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      password: password,
+      email_confirm: true,
+      user_metadata: { name: namaOwner.trim(), role: 'Owner' }
+    });
+
+    if (authError) {
+      console.error('Auth User Creation Error:', authError.message);
+      return res.status(400).json({ error: authError.message || 'Gagal mendaftarkan user.' });
+    }
+
+    const uid = authData.user.id;
+
+    // 2. Create Tenant ID
+    const tenantId = 'T' + crypto.randomBytes(6).toString('hex').toUpperCase();
+
+    // 3. Insert Tenant
+    const { error: tError } = await supabase.from('tenants').insert({
+      tenant_id: tenantId,
+      tenant_name: namaToko.trim(),
+      phone: nomorHp.trim(),
+      status: 'active',
+      plan_id: planId
+    });
+
+    if (tError) {
+      console.error('Tenant DB Insert Error:', tError.message);
+      // Clean up auth user
+      await supabase.auth.admin.deleteUser(uid);
+      return res.status(500).json({ error: 'Gagal membuat profil tenant.' });
+    }
+
+    // 4. Insert Staff/Owner
+    const { error: sError } = await supabase.from('staff').insert({
+      tenant_id: tenantId,
+      auth_user_id: uid,
+      name: namaOwner.trim(),
+      email: cleanEmail,
+      phone: nomorHp.trim(),
+      role: 'Owner',
+      status: 'Aktif'
+    });
+
+    if (sError) {
+      console.error('Staff DB Insert Error:', sError.message);
+      // Clean up
+      await supabase.from('tenants').delete().eq('tenant_id', tenantId);
+      await supabase.auth.admin.deleteUser(uid);
+      return res.status(500).json({ error: 'Gagal membuat profil owner.' });
+    }
+
+    // 5. Update Subscription to planId
+    await supabase.from('tenant_subscriptions').upsert({
+      tenant_id: tenantId,
+      plan_id: planId,
+      status: 'active'
+    });
+
+    // Populate some demo products (coffee shop theme) so their new store has products right away!
+    try {
+      const { data: mainOutlet } = await supabase
+        .from('outlets')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('is_main', true)
+        .maybeSingle();
+
+      const outletId = mainOutlet?.id || null;
+
+      // Insert categories
+      const categories = [
+        { tenant_id: tenantId, name: 'Kopi & Latte', type: 'ritel', code: 'KOPI' },
+        { tenant_id: tenantId, name: 'Non-Kopi', type: 'ritel', code: 'NONKOPI' },
+        { tenant_id: tenantId, name: 'Cemilan', type: 'ritel', code: 'CEMILAN' }
+      ];
+      await supabase.from('product_categories').insert(categories);
+
+      // Insert products
+      const demoProducts = [
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Es Kopi Susu Gula Aren', price: 22000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Caffe Latte Art', price: 28000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Matcha Latte Premium', price: 26000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Chocolate Signature', price: 25000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
+        { tenant_id: tenantId, outlet_id: outletId, name: 'Butter Croissant', price: 18000, category: 'Cemilan', unit: 'Pcs', is_active: true }
+      ];
+      await supabase.from('products').insert(demoProducts);
+    } catch (populateError) {
+      console.warn('Failed to populate initial demo products:', populateError.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Registrasi dan pembayaran berhasil diverifikasi!',
+      tenantId,
+      uid
+    });
+  } catch (error) {
+    console.error('Subscription signup error:', error.message);
+    return res.status(500).json({ error: 'Terjadi kesalahan sistem saat mendaftarkan langganan.' });
+  }
+});
+
 app.post('/api/xendit/webhook-payment', async (req, res) => {
+
   const payload = req.body;
   const callbackToken = req.headers['x-callback-token'];
   console.log('[Webhook Payment Received]', JSON.stringify(payload));
@@ -438,12 +638,75 @@ app.post('/api/xendit/webhook-payment', async (req, res) => {
     return res.status(400).send('Invalid webhook payload: Missing external_id or reference_id');
   }
 
+  const externalIdStr = String(transactionId);
+
+  // A. ROUTE TO SAAS BILLING / TOP-UP IF IT HAS PREFIX
+  if (externalIdStr.startsWith('BILL-') || externalIdStr.startsWith('TOPUP-') || externalIdStr.startsWith('sub-payment-')) {
+    console.log(`[Webhook Payment] Routing to SaaS Billing/Topup processor for ID: ${externalIdStr}`);
+    
+    if (externalIdStr.startsWith('TOPUP-')) {
+      const parts = externalIdStr.split('-'); // e.g. TOPUP-{tenantId}-{outletId}-{timestamp}
+      const tenantId = parts[1];
+      let outletId = null;
+      if (parts.length >= 4) {
+        outletId = parts[2] !== 'null' ? Number(parts[2]) : null;
+      }
+      try {
+        const { error } = await supabase.rpc('add_tenant_balance', {
+          p_tenant_id: tenantId,
+          p_outlet_id: outletId,
+          p_amount: Number(amount),
+          p_description: 'Top Up Deposit via ' + (payload.payment_method || 'Xendit'),
+          p_ref_id: externalIdStr
+        });
+        if (error) throw error;
+        console.log(`[Webhook SaaS] Sukses Top Up Saldo Rp ${amount} untuk tenant ${tenantId}`);
+      } catch (err) {
+        console.error('[Webhook SaaS TopUp Error]', err.message);
+      }
+    } else if (externalIdStr.startsWith('BILL-')) {
+      const id = externalIdStr.replace('BILL-', '');
+      try {
+        const { data: billing } = await supabase.from('tenant_billing').select('*').eq('id', id).single();
+        if (billing && billing.status !== 'paid') {
+          await supabase.from('tenant_billing').update({
+            status: 'paid',
+            payment_method: payload.payment_method || 'XENDIT',
+            paid_at: new Date().toISOString()
+          }).eq('id', id);
+
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + 1);
+
+          await supabase.from('tenants').update({
+            plan_id: billing.plan_id,
+            subscription_status: 'active',
+            subscription_end_date: endDate.toISOString()
+          }).eq('tenant_id', billing.tenant_id);
+
+          console.log(`[Webhook SaaS] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
+        }
+      } catch (err) {
+        console.error('[Webhook SaaS Billing Error]', err.message);
+      }
+    }
+    
+    return res.status(200).send('OK');
+  }
+
+  // B. SAFELY IGNORE NON-NUMERIC PING/TEST IDS FROM XENDIT
+  const isNumeric = /^\d+$/.test(externalIdStr);
+  if (!isNumeric) {
+    console.log(`[Webhook Payment] Mengabaikan non-numeric transactionId (test/ping dari Xendit): ${externalIdStr}`);
+    return res.status(200).send('OK (Test/Ping Ignored)');
+  }
+
   try {
-    // 3. Ambil data transaksi dari Supabase
+    // 3. Ambil data transaksi dari Supabase (Aman karena ID dijamin berupa angka/bigint)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
       .select('*')
-      .eq('id', transactionId)
+      .eq('id', Number(externalIdStr))
       .maybeSingle();
 
     if (txError) throw txError;
@@ -1100,6 +1363,15 @@ app.post('/api/saas/subscribe', async (req, res) => {
 // SaaS Webhook Callback from Xendit
 app.post('/api/saas/webhook', async (req, res) => {
   const payload = req.body;
+  const callbackToken = req.headers['x-callback-token'];
+
+  // Verifikasi Callback Token jika dikonfigurasi di env
+  const expectedToken = process.env.XENDIT_CALLBACK_TOKEN;
+  if (expectedToken && callbackToken !== expectedToken) {
+    console.warn(`[SaaS Webhook] Callback token tidak cocok. Dikirim: ${callbackToken}`);
+    return res.status(401).send('Unauthorized callback token');
+  }
+
   console.log('[SaaS Webhook Received]', payload.external_id, payload.status);
 
   if (payload.status === 'PAID' || payload.status === 'SETTLED') {

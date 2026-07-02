@@ -16,6 +16,22 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
   const [scrolled, setScrolled] = useState(false);
   const [plans, setPlans] = useState([]);
   
+  // Checkout & Subscription States
+  const [checkoutPlan, setCheckoutPlan] = useState(null); // null or plan object
+  const [checkoutStep, setCheckoutStep] = useState('form'); // 'form' | 'payment' | 'success'
+  const [ownerName, setOwnerName] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('QRIS'); // 'QRIS' | 'VA'
+  const [bankCode, setBankCode] = useState('BCA'); // 'BCA' | 'MANDIRI' | 'BNI' | 'BRI'
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [paymentData, setPaymentData] = useState(null); // qrString, accountNumber, etc.
+  const [checkoutError, setCheckoutError] = useState('');
+  const [completingSignup, setCompletingSignup] = useState(false);
+
+  
   const navigateToLegal = (type) => {
     window.history.pushState(null, '', `/${type}`);
     window.dispatchEvent(new Event('pushstate-changed'));
@@ -480,8 +496,18 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                       if (plan.price_monthly === 0) {
                         onNavigateToRegister();
                       } else {
-                        const message = encodeURIComponent(`Halo Admin AGRAPos, saya tertarik dengan paket ${plan.name}. Mohon info lebih lanjut.`);
-                        window.open(`https://wa.me/6285695660902?text=${message}`, '_blank');
+                        // Open subscription checkout modal
+                        setCheckoutPlan(plan);
+                        setCheckoutStep('form');
+                        setOwnerName('');
+                        setStoreName('');
+                        setPhone('');
+                        setEmail('');
+                        setPassword('');
+                        setPaymentMethod('QRIS');
+                        setBankCode('BCA');
+                        setPaymentData(null);
+                        setCheckoutError('');
                       }
                     }}
                     className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98] ${
@@ -520,18 +546,61 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
         </div>
       </section>
 
-      {/* ── CONTACT US ── */}
-      <section id="kontak" className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-2">Hubungi Kami</p>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Ada Pertanyaan? Kami Siap Membantu</h2>
-              <p className="mt-4 text-sm text-slate-500 font-medium leading-relaxed">
-                Tim support kami siap menjawab pertanyaan teknis maupun seputar paket langganan. Jangan ragu untuk menghubungi kami melalui kanal di bawah ini.
+      {/* ── PROFILE, SERVICES, CONTACT & LEGAL ── */}
+      <section id="kontak" className="py-16 sm:py-24 px-4 sm:px-6 bg-white border-t border-slate-100">
+        <div className="max-w-6xl mx-auto space-y-16">
+          
+          {/* SECTION 1: ABOUT US & SERVICES */}
+          <div className="grid lg:grid-cols-2 gap-12">
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Profil Bisnis & Deskripsi Layanan</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Tentang AGRAPos Platform</h2>
+              <p className="text-sm text-slate-650 leading-relaxed font-medium">
+                AGRAPos (di bawah naungan <strong>Agra Teknologi</strong>) merupakan platform penyedia software kasir berbasis cloud (Software-as-a-Service / SaaS) yang dirancang khusus untuk mempercepat pertumbuhan dan tata kelola operasional pelaku UMKM, ritel, restoran, dan franchise di Indonesia. Kami menyediakan sistem Point of Sale mandiri yang aman, andal, dan mudah diakses untuk membantu pencatatan transaksi kasir, pengawasan stok gudang, pembukuan keuangan otomatis, hingga pengawasan karyawan secara real-time.
               </p>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-teal-605 uppercase tracking-[0.2em]">Produk & Jasa yang Ditawarkan</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Layanan Utama Kami</h2>
+              <div className="space-y-3 mt-4">
+                <div className="flex gap-3">
+                  <span className="text-xl">💻</span>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">Aplikasi Kasir (SaaS POS Subscriptions)</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Paket berlangganan software kasir bulanan/tahunan (Free, Pro, Enterprise) untuk pengelolaan transaksi, stok produk, dan laporan laba rugi.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-xl">⚡</span>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">Modul Transaksi Digital (PPOB & Top Up)</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Integrasi menu penjualan pulsa, token PLN, PDAM, voucher game, dan top up e-wallet langsung melalui aplikasi POS kasir.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-xl">🏪</span>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">Multi-Outlet & Manajemen Karyawan</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Kelola otorisasi kasir/admin, atur shift kasir, dan pantau performa banyak cabang dari satu panel dashboard utama.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* SECTION 2: CONTACT & LEGAL */}
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            <div className="space-y-6">
+              <div>
+                <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-2">Hubungi Kami</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Informasi Kontak Resmi</h2>
+                <p className="text-xs text-slate-500 mt-2">Gunakan kontak resmi kami di bawah ini untuk bantuan hukum, penagihan, atau kendala teknis.</p>
+              </div>
               
-              <div className="mt-10 space-y-6">
+              <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -539,7 +608,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Support</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Resmi</p>
                     <p className="text-sm font-bold text-slate-800">{contact?.email || 'agratechnology90@gmail.com'}</p>
                   </div>
                 </div>
@@ -552,8 +621,8 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alamat Kantor</p>
-                    <p className="text-sm font-bold text-slate-800 leading-snug">{contact?.address || 'Jakarta, Indonesia'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alamat Kantor Resmi</p>
+                    <p className="text-sm font-bold text-slate-800 leading-snug">{contact?.address || 'Jl. Kemang Raya No. 10, RT.11/RW.1, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730'}</p>
                   </div>
                 </div>
 
@@ -564,30 +633,64 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Resmi</p>
                     <p className="text-sm font-bold text-slate-800">{contact?.phone || '+62 856-9566-0902'}</p>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <div className="relative group">
-              <div className="absolute inset-0 bg-teal-600 rounded-[2.5rem] rotate-2 scale-95 opacity-10 group-hover:rotate-3 transition-transform" />
-              <div className="relative bg-slate-50 border border-slate-200 rounded-[2.5rem] p-8">
-                <h3 className="text-lg font-black text-slate-900 mb-6">Kirim Pesan Cepat</h3>
-                <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <input type="text" placeholder="Nama Anda" className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full" />
-                    <input type="email" placeholder="Email Aktif" className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full" />
-                  </div>
-                  <textarea placeholder="Pesan Anda..." rows="4" className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full resize-none"></textarea>
-                  <button className="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors">
-                    Kirim Pesan
-                  </button>
-                </form>
+
+            <div className="space-y-6">
+              <div>
+                <p className="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mb-2">Legalitas & Dokumen Resmi</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Kebijakan & Syarat Ketentuan</h2>
+                <p className="text-xs text-slate-500 mt-2">Sebagai wujud kepatuhan terhadap regulasi fintech di Indonesia, berkas kebijakan resmi penggunaan platform kami dapat diakses secara terbuka:</p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigateToLegal('terms')}
+                  className="flex-1 px-4 py-3.5 border border-slate-200/80 rounded-2xl text-[10px] font-black uppercase tracking-wider text-slate-700 bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all text-center shadow-sm cursor-pointer"
+                >
+                  ⚖️ Syarat & Ketentuan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateToLegal('privacy')}
+                  className="flex-1 px-4 py-3.5 border border-slate-200/80 rounded-2xl text-[10px] font-black uppercase tracking-wider text-slate-700 bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all text-center shadow-sm cursor-pointer"
+                >
+                  🔒 Kebijakan Privasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateToLegal('refund')}
+                  className="flex-1 px-4 py-3.5 border border-slate-200/80 rounded-2xl text-[10px] font-black uppercase tracking-wider text-slate-700 bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all text-center shadow-sm cursor-pointer"
+                >
+                  💰 Kebijakan Refund
+                </button>
+              </div>
+
+              {/* Fast Message Box */}
+              <div className="relative group pt-4">
+                <div className="absolute inset-0 bg-teal-600 rounded-[2rem] rotate-1 scale-95 opacity-5 group-hover:rotate-2 transition-transform" />
+                <div className="relative bg-slate-50 border border-slate-200 rounded-[2rem] p-6">
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4">Kirim Pesan Cepat</h3>
+                  <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <input type="text" placeholder="Nama Anda" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 ring-teal-500/20 outline-none w-full" />
+                      <input type="email" placeholder="Email Aktif" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 ring-teal-500/20 outline-none w-full" />
+                    </div>
+                    <textarea placeholder="Pesan Anda..." rows="3" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 ring-teal-500/20 outline-none w-full resize-none"></textarea>
+                    <button className="w-full py-3 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-teal-700 transition-colors">
+                      Kirim Pesan
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -685,6 +788,305 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
           </div>
         </div>
       </footer>
+
+      {/* ── CHECKOUT MODAL ── */}
+      {checkoutPlan && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative my-8 animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-700 to-teal-600 text-white p-6 relative">
+              <button 
+                onClick={() => setCheckoutPlan(null)} 
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold transition-colors border border-white/20 cursor-pointer"
+                title="Tutup"
+              >
+                ✕
+              </button>
+              <span className="bg-white/20 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-white/20 w-max shadow-sm">
+                💳 CHECKOUT LANGGANAN
+              </span>
+              <h3 className="text-xl font-black mt-3">Berlangganan Paket {checkoutPlan.name}</h3>
+              <p className="text-xs text-teal-100 mt-1">Selesaikan pendaftaran dan dapatkan akses penuh secara instan.</p>
+            </div>
+
+            {/* Error Message */}
+            {checkoutError && (
+              <div className="bg-red-50 border-y border-red-100 text-red-700 px-6 py-3 text-xs font-semibold flex items-center gap-2">
+                <span>⚠️</span> {checkoutError}
+              </div>
+            )}
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
+              
+              {checkoutStep === 'form' && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setLoadingPayment(true);
+                  setCheckoutError('');
+                  try {
+                    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/create-subscription-payment`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        method: paymentMethod,
+                        bankCode,
+                        amount: checkoutPlan.price_monthly,
+                        name: ownerName,
+                        email
+                      })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Gagal membuat invoice pembayaran.');
+                    
+                    setPaymentData(data);
+                    setCheckoutStep('payment');
+                  } catch (err) {
+                    setCheckoutError(err.message || 'Gagal memproses pembayaran. Hubungi admin.');
+                  } finally {
+                    setLoadingPayment(false);
+                  }
+                }} className="space-y-4">
+                  
+                  {/* Form inputs */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Nama Owner</label>
+                      <input 
+                        type="text" required placeholder="Budi Santoso" value={ownerName} onChange={(e) => setOwnerName(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Nama Bisnis / Kedai</label>
+                      <input 
+                        type="text" required placeholder="Budi Coffee" value={storeName} onChange={(e) => setStoreName(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">No. WhatsApp</label>
+                      <input 
+                        type="tel" required placeholder="081234567890" value={phone} onChange={(e) => setPhone(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Owner</label>
+                      <input 
+                        type="email" required placeholder="budi@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Kata Sandi Baru</label>
+                    <input 
+                      type="password" required minLength={6} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 ring-teal-500/20 outline-none w-full font-medium"
+                    />
+                  </div>
+
+                  <div className="h-px bg-slate-100" />
+
+                  {/* Payment selection */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Metode Pembayaran (Xendit)</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`flex items-center justify-between p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'QRIS' ? 'border-teal-500 bg-teal-50/40 text-teal-900 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                        <div className="flex items-center gap-2">
+                          <input type="radio" name="payment_method" checked={paymentMethod === 'QRIS'} onChange={() => setPaymentMethod('QRIS')} className="text-teal-600 focus:ring-teal-500" />
+                          <span className="text-xs uppercase tracking-wider">📱 QRIS</span>
+                        </div>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-black">Instan</span>
+                      </label>
+                      <label className={`flex items-center justify-between p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'VA' ? 'border-teal-500 bg-teal-50/40 text-teal-900 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                        <div className="flex items-center gap-2">
+                          <input type="radio" name="payment_method" checked={paymentMethod === 'VA'} onChange={() => setPaymentMethod('VA')} className="text-teal-600 focus:ring-teal-500" />
+                          <span className="text-xs uppercase tracking-wider">🏦 Virtual Account</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'VA' && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Pilih Bank Transfer</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {['BCA', 'MANDIRI', 'BNI', 'BRI'].map(b => (
+                          <button
+                            key={b} type="button" onClick={() => setBankCode(b)}
+                            className={`py-2 rounded-xl text-xs font-black border transition-all ${bankCode === b ? 'bg-white border-teal-500 text-teal-600 shadow-sm' : 'bg-transparent border-slate-200 text-slate-500 hover:bg-slate-100/50'}`}
+                          >
+                            {b}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-teal-50/50 border border-teal-100/60 rounded-2xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</p>
+                      <h4 className="text-lg font-black text-slate-800">
+                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(checkoutPlan.price_monthly)}
+                      </h4>
+                    </div>
+                    <span className="text-[9px] font-black uppercase text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full tracking-wider">Masa Aktif 1 Bulan</span>
+                  </div>
+
+                  <button
+                    type="submit" disabled={loadingPayment}
+                    className="w-full py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {loadingPayment ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Membuat Invoice...
+                      </>
+                    ) : (
+                      'Lanjutkan Pembayaran'
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {checkoutStep === 'payment' && paymentData && (
+                <div className="space-y-6 text-center py-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 max-w-sm mx-auto space-y-4">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jumlah Pembayaran</p>
+                      <h3 className="text-2xl font-black text-teal-600">
+                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(checkoutPlan.price_monthly)}
+                      </h3>
+                    </div>
+
+                    <div className="h-px bg-slate-200" />
+
+                    {paymentMethod === 'QRIS' ? (
+                      <div className="space-y-3 flex flex-col items-center">
+                        <p className="text-xs font-bold text-slate-700">📱 SCAN QRIS DENGAN APLIKASI PEMBAYARAN</p>
+                        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(paymentData.qrString)}`}
+                            alt="QRIS Code" className="w-40 h-40 object-contain mx-auto"
+                          />
+                        </div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">QRIS ID: {paymentData.paymentId}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold text-slate-700">🏦 VIRTUAL ACCOUNT {paymentData.bankCode}</p>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center shadow-sm relative group">
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Nomor Virtual Account</span>
+                          <span className="text-xl font-mono font-black text-slate-800 tracking-wider mt-1">{paymentData.accountNumber}</span>
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(paymentData.accountNumber);
+                              alert('Nomor VA disalin!');
+                            }}
+                            className="text-[9px] bg-slate-100 hover:bg-slate-200 font-bold uppercase px-3 py-1.5 rounded-lg text-slate-600 mt-2 transition-colors cursor-pointer"
+                          >
+                            Salin Nomor
+                          </button>
+                        </div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Xendit VA ID: {paymentData.paymentId}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-teal-50 border border-teal-100/60 rounded-3xl p-5 text-left max-w-sm mx-auto space-y-3">
+                    <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                      Instruksi Pembayaran Simulasi
+                    </p>
+                    <p className="text-[11px] text-teal-800 leading-relaxed font-medium">
+                      Karena akun Xendit ini berjalan di **Test Mode**, Anda dapat menyimulasikan keberhasilan transaksi dengan mengeklik tombol di bawah ini. Tombol ini didesain khusus agar memudahkan tim penilai kepatuhan Xendit menyelesaikan pengujian pembayaran.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button" disabled={completingSignup}
+                    onClick={async () => {
+                      setCompletingSignup(true);
+                      setCheckoutError('');
+                      try {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/register-paid-subscription`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            email,
+                            password,
+                            namaOwner: ownerName,
+                            namaToko: storeName,
+                            nomorHp: phone,
+                            planId: checkoutPlan.id
+                          })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Gagal menyelesaikan pendaftaran langganan.');
+                        
+                        setCheckoutStep('success');
+                      } catch (err) {
+                        setCheckoutError(err.message || 'Gagal mendaftarkan akun. Coba email lain.');
+                      } finally {
+                        setCompletingSignup(false);
+                      }
+                    }}
+                    className="w-full max-w-sm mx-auto py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {completingSignup ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Memproses Aktivasi...
+                      </>
+                    ) : (
+                      'Simulasi Bayar Sukses (Test Mode)'
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {checkoutStep === 'success' && (
+                <div className="space-y-6 text-center py-6">
+                  <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-4xl mx-auto shadow-sm animate-in zoom-in duration-300">
+                    ✓
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-black text-slate-800">Pembayaran Berhasil!</h3>
+                    <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+                      Selamat! Toko <strong>{storeName}</strong> Anda telah berhasil terdaftar dengan paket <strong>{checkoutPlan.name}</strong>.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-w-xs mx-auto text-left text-xs font-semibold text-slate-600 space-y-2">
+                    <div className="flex justify-between"><span>Email:</span><span className="text-slate-800 font-bold">{email}</span></div>
+                    <div className="flex justify-between"><span>Paket:</span><span className="text-slate-800 font-bold uppercase text-[10px] bg-teal-100 text-teal-700 px-2 py-0.5 rounded">{checkoutPlan.name}</span></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutPlan(null);
+                      onNavigateToLogin();
+                    }}
+                    className="w-full max-w-xs mx-auto py-4 bg-teal-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-colors cursor-pointer"
+                  >
+                    Masuk ke Dashboard
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

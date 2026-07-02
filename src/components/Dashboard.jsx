@@ -103,7 +103,7 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 // eslint-disable-next-line no-unused-vars
-export default function Dashboard({ transactions = [], onNavigate, currentUser, onShowToast, onTriggerUpgrade, onTriggerFeaturePopup }) {
+export default function Dashboard({ transactions = [], onNavigate, currentUser, onShowToast, onTriggerUpgrade, onTriggerFeaturePopup, platformSettings: platformSettingsFromApp }) {
   const [broadcasts, setBroadcasts] = useState([]);
   const [activePopup, setActivePopup] = useState(null);
 
@@ -162,10 +162,16 @@ export default function Dashboard({ transactions = [], onNavigate, currentUser, 
   // eslint-disable-next-line no-unused-vars
   const [isTopupLoading, setIsTopupLoading] = useState(false);
   // eslint-disable-next-line no-unused-vars
-  const [platformSettings, setPlatformSettings] = useState({
+  const [localPlatformSettings, setLocalPlatformSettings] = useState({
     deposit_qris_enabled: true,
     deposit_transfer_enabled: true
   });
+
+  // Merge: gunakan pos_features dari App (lengkap), deposit settings dari fetch lokal
+  const platformSettings = {
+    ...localPlatformSettings,
+    pos_features: platformSettingsFromApp?.pos_features || localPlatformSettings?.pos_features
+  };
 
   React.useEffect(() => {
     if (!activeUser?.tenant_id) return;
@@ -226,12 +232,12 @@ export default function Dashboard({ transactions = [], onNavigate, currentUser, 
           }
         }).catch(console.error);
 
-      // Fetch Global Platform Settings (Feature Toggles)
+      // Fetch Global Platform Settings (deposit toggles only — pos_features didapat dari App via props)
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/platform-settings`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            setPlatformSettings(data.features || { deposit_qris_enabled: true, deposit_transfer_enabled: true });
+            setLocalPlatformSettings(data.features || { deposit_qris_enabled: true, deposit_transfer_enabled: true });
 
             // Set default tab if the current one is disabled
             setTopupMethod(prev => {
