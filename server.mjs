@@ -448,6 +448,24 @@ app.post('/api/xendit/simulate-va-payment', async (req, res) => {
   }
 });
 
+app.get('/api/xendit/test-key', async (req, res) => {
+  try {
+    const key = process.env.XENDIT_SECRET_KEY || '';
+    const balanceRes = await axios.get('https://api.xendit.co/balance', {
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(key + ':').toString('base64')
+      }
+    });
+    return res.status(200).json({
+      keyPrefix: key.substring(0, 15),
+      balance: balanceRes.data,
+      envKeyExists: !!process.env.XENDIT_SECRET_KEY
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.response?.data || error.message });
+  }
+});
+
 app.post('/api/xendit/create-subscription-payment', async (req, res) => {
   const { method, bankCode, amount, name, email } = req.body;
 
