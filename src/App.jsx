@@ -1420,21 +1420,15 @@ export default function App() {
                       paddingBottom: '8px'
                     }}>
                       <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_QRIS.svg/320px-Logo_QRIS.svg.png" 
+                        src="/qris-logo.png" 
                         alt="QRIS" 
-                        style={{ height: '18px', objectFit: 'contain' }} 
+                        style={{ height: '22px', objectFit: 'contain' }} 
                       />
-                      <span style={{ 
-                        fontSize: '7.5px', 
-                        fontWeight: 900, 
-                        color: '#64748b', 
-                        border: '1.5px solid #cbd5e1', 
-                        padding: '1.5px 5px', 
-                        borderRadius: '4px',
-                        letterSpacing: '0.05em'
-                      }}>
-                        GPN
-                      </span>
+                      <img 
+                        src="/gpn-logo.png" 
+                        alt="GPN" 
+                        style={{ height: '24px', objectFit: 'contain' }} 
+                      />
                     </div>
 
                     {/* QR Frame */}
