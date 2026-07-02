@@ -457,7 +457,7 @@ app.get('/api/xendit/test-key', async (req, res) => {
       }
     });
     return res.status(200).json({
-      keyPrefix: key.substring(0, 15),
+      keyPrefix: key.substring(0, 30),
       balance: balanceRes.data,
       envKeyExists: !!process.env.XENDIT_SECRET_KEY
     });
