@@ -560,6 +560,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
   // Xendit Real Integration States
   const [loadingXendit, setLoadingXendit] = useState(false);
   const [xenditQrCode, setXenditQrCode] = useState('');
+  const [xenditQrCodeId, setXenditQrCodeId] = useState('');
   const [xenditVaNumber, setXenditVaNumber] = useState('');
   const [xenditVaBank, setXenditVaBank] = useState('BCA');
   const [errorXendit, setErrorXendit] = useState('');
@@ -647,6 +648,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         });
         if (res.success) {
           setXenditQrCode(res.qrString || '');
+          setXenditQrCodeId(res.qrCodeId || '');
         } else {
           throw new Error(res.error || 'Gagal generate QRIS');
         }
@@ -697,6 +699,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
   // Reset states when transaction changes
   useEffect(() => {
     setXenditQrCode('');
+    setXenditQrCodeId('');
     setXenditVaNumber('');
     setErrorXendit('');
   }, [savedTransaction?.id]);
@@ -2335,7 +2338,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                           className="w-32 h-32 object-contain"
                                         />
                                         <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">XENDIT DYNAMIC QRIS ⚡</span>
-                                        <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id}</span>
+                                        <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
 
                                         {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
                                           <div className="mt-2.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-mono text-[8px] text-center w-full max-w-[200px]">
