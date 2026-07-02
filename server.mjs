@@ -759,11 +759,11 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
     // 6. Fetch Plan price
     const { data: planData } = await supabase
       .from('subscription_plans')
-      .select('price')
+      .select('price_monthly')
       .eq('id', planId)
       .maybeSingle();
 
-    const planPrice = planData?.price || 99000; // fallback default price if missing
+    const planPrice = planData?.price_monthly || 99000; // fallback default price if missing
 
     // 7. Create billing invoice
     const { data: billing, error: billingErr } = await supabase
@@ -897,10 +897,19 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
       endDate.setMonth(endDate.getMonth() + 1);
 
       await supabase.from('tenants').update({
+        status: 'active',
         plan_id: billing.plan_id,
         subscription_status: 'active',
         subscription_end_date: endDate.toISOString()
       }).eq('tenant_id', billing.tenant_id);
+
+      await supabase.from('tenant_subscriptions').upsert({
+        tenant_id: billing.tenant_id,
+        plan_id: billing.plan_id,
+        status: 'active',
+        current_period_end: endDate.toISOString(),
+        updated_at: new Date().toISOString()
+      });
 
       console.log(`[Simulator Webhook] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
     }
@@ -986,10 +995,19 @@ app.post('/api/xendit/webhook-payment', async (req, res) => {
           endDate.setMonth(endDate.getMonth() + 1);
 
           await supabase.from('tenants').update({
+            status: 'active',
             plan_id: billing.plan_id,
             subscription_status: 'active',
             subscription_end_date: endDate.toISOString()
           }).eq('tenant_id', billing.tenant_id);
+
+          await supabase.from('tenant_subscriptions').upsert({
+            tenant_id: billing.tenant_id,
+            plan_id: billing.plan_id,
+            status: 'active',
+            current_period_end: endDate.toISOString(),
+            updated_at: new Date().toISOString()
+          });
 
           console.log(`[Webhook SaaS] Tenant ${billing.tenant_id} upgraded to ${billing.plan_id}`);
         }
