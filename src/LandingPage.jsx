@@ -1001,15 +1001,53 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     <div className="h-px bg-slate-200" />
 
                     {paymentMethod === 'QRIS' ? (
-                      <div className="space-y-3 flex flex-col items-center">
-                        <p className="text-xs font-bold text-slate-700">📱 SCAN QRIS DENGAN APLIKASI PEMBAYARAN</p>
-                        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
-                          <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(paymentData.qrString)}`}
-                            alt="QRIS Code" className="w-40 h-40 object-contain mx-auto"
-                          />
+                      <div className="space-y-3 flex flex-col items-center w-full">
+                        {/* QRIS Card — Standar Bank Indonesia */}
+                        <div style={{
+                          background: '#fff',
+                          border: '2px solid #e2e8f0',
+                          borderRadius: '16px',
+                          padding: '16px',
+                          width: '100%',
+                          maxWidth: '260px',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}>
+                          {/* Header: QRIS + GPN */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '8px' }}>
+                            <span style={{ fontSize: '20px', fontWeight: 900, color: '#E31837', fontFamily: 'Arial Black, Arial, sans-serif', letterSpacing: '-0.02em' }}>QRIS</span>
+                            <img
+                              src="https://i.ibb.co.com/S4PL5jzX/OIP-removebg-preview.png"
+                              alt="GPN"
+                              style={{ height: '30px', objectFit: 'contain' }}
+                            />
+                          </div>
+                          {/* Nama Merchant */}
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', margin: 0 }}>AGRAPOS</p>
+                            <p style={{ fontSize: '9px', color: '#64748b', margin: 0 }}>Multi-Tenant POS</p>
+                          </div>
+                          {/* QR Code */}
+                          <div style={{ background: '#fff', padding: '8px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(paymentData.qrString)}&margin=4`}
+                              alt="QRIS Code"
+                              style={{ width: '160px', height: '160px', objectFit: 'contain' }}
+                            />
+                          </div>
+                          {/* Jumlah */}
+                          <div style={{ textAlign: 'center', background: '#f8fafc', borderRadius: '8px', padding: '6px 0' }}>
+                            <p style={{ fontSize: '9px', color: '#64748b', margin: 0, fontWeight: 600 }}>TOTAL BAYAR</p>
+                            <p style={{ fontSize: '16px', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(checkoutPlan.price_monthly)}
+                            </p>
+                          </div>
+                          {/* Footer */}
+                          <p style={{ fontSize: '8px', color: '#94a3b8', textAlign: 'center', margin: 0 }}>ID: {paymentData.paymentId?.slice(0, 20)}...</p>
                         </div>
-                        <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">QRIS ID: {paymentData.paymentId}</p>
+                        <p style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>📱 Scan dengan aplikasi e-wallet / m-banking apapun</p>
                       </div>
                     ) : (
                       <div className="space-y-3">

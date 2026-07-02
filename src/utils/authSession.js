@@ -101,14 +101,16 @@ export async function resolveUserFromSession(session) {
 }
 
 export async function restoreAuthSession() {
+  // Juga hapus cached user dulu agar tidak ada stale data
+  localStorage.removeItem(USER_STORAGE_KEY);
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session) {
-    localStorage.removeItem(USER_STORAGE_KEY);
     return null;
   }
   const user = await resolveUserFromSession(session);
   if (!user) {
-    localStorage.removeItem(USER_STORAGE_KEY);
+    // resolveUserFromSession return null = pending_payment / banned / not found
+    // Paksa sign-out agar sesi Supabase pun invalid
     try {
       await supabase.auth.signOut();
     } catch {
@@ -161,6 +163,11 @@ export function subscribeAuthChanges(onUserChange) {
         if (user) {
           persistUserSession(user);
           onUserChange(user);
+        } else {
+          // Tenant pending_payment / banned — paksa sign-out & eject dari dashboard
+          localStorage.removeItem(USER_STORAGE_KEY);
+          try { await supabase.auth.signOut(); } catch { /* ignore */ }
+          onUserChange(null);
         }
       }
     }, 0);
