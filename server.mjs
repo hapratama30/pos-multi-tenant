@@ -624,15 +624,17 @@ app.post('/api/xendit/webhook-payment', async (req, res) => {
   }
 
   // 2. Ekstraksi data yang adaptif terhadap payload Virtual Account dan QRIS
-  let transactionId = payload.external_id || payload.reference_id;
-  let amount = payload.amount;
+  let transactionId = payload.external_id || 
+                      payload.reference_id || 
+                      payload.data?.reference_id || 
+                      payload.data?.qr_code?.reference_id;
+                      
+  let amount = payload.amount || 
+               payload.data?.amount || 
+               payload.data?.qr_payment?.amount || 
+               payload.data?.qr_code?.amount;
+               
   let bankCode = payload.bank_code;
-  const isQrEvent = payload.event === 'qr.payment' || (payload.data && payload.data.qr_code);
-
-  if (isQrEvent && payload.data) {
-    transactionId = payload.data.qr_code?.reference_id || transactionId;
-    amount = payload.data.qr_payment?.amount || payload.data.qr_code?.amount || amount;
-  }
 
   if (!transactionId) {
     return res.status(400).send('Invalid webhook payload: Missing external_id or reference_id');
