@@ -59,6 +59,11 @@ app.get('/api/saas/platform-settings', async (req, res) => {
   }
 });
 
+app.get('/api/check-key', (req, res) => {
+  const key = process.env.XENDIT_SECRET_KEY || '';
+  res.send(`Key length: ${key.length}, prefix: ${key.slice(0, 20)}`);
+});
+
 app.post('/api/saas/platform-settings', async (req, res) => {
   const { pin, features } = req.body;
   const SUPERADMIN_PIN = process.env.VITE_SUPERADMIN_PIN || '@Hapratama30';
