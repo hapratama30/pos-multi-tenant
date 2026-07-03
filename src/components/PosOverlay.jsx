@@ -738,6 +738,25 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
     }
   };
 
+  const handleFinishAndClose = () => {
+    clearCart();
+    setSelectedCustomer(null);
+    setCatatan('');
+    setBiayaTambahan(0);
+    setSelectedDiscountId('');
+    setMetodePembayaran('Tunai');
+    setUseSplitPayment(false);
+    setSplitPayments([]);
+    setXenditQrCode('');
+    setXenditQrCodeId('');
+    setXenditVaNumber('');
+    setSavedTransaction(null);
+    setPaymentFlow('pilih_aksi');
+    setShowSuccessModal(false);
+    if (onSuccess) onSuccess();
+    onClose();
+  };
+
   // Polling
   useEffect(() => {
     if (paymentFlow !== 'bayar_langsung' || !savedTransaction?.id) return;
@@ -2123,7 +2142,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                   <div className="text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-slate-50 p-3 rounded-xl border">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
-                  <button onClick={() => { if (onSuccess) onSuccess(); onClose(); }}
+                  <button onClick={handleFinishAndClose}
                     className="w-full bg-slate-800 hover:bg-slate-900 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg">
                     ✕ Tutup Layar Kasir
                   </button>
@@ -2139,7 +2158,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                   <div className="text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
-                  <button onClick={() => { if (onSuccess) onSuccess(); onClose(); }}
+                  <button onClick={handleFinishAndClose}
                     className="w-full bg-slate-800 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg">
                     ✕ Tutup Layar Kasir
                   </button>
@@ -2694,7 +2713,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
 
             <button
               type="button"
-              onClick={() => setShowSuccessModal(false)}
+              onClick={handleFinishAndClose}
               className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-wider transition active:scale-95 cursor-pointer border-none"
             >
               ✕ Tutup Layar Kasir
