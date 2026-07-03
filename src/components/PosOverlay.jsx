@@ -2007,7 +2007,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                 <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">👤 Pelanggan</p>
                   <p className="text-xs font-black text-slate-800 truncate">
-                    {selectedCustomer ? selectedCustomer.name : 'Pelanggan Umum (Guest)'}
+                    {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Pelanggan Umum (Guest)')}
                   </p>
                   {selectedCustomer?.phone && (
                     <p className="text-[9px] text-slate-400 font-mono mt-0.5">{selectedCustomer.phone}</p>
@@ -2105,7 +2105,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
 
                   <div className="text-center mt-1">
                     <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-bold bg-white px-3 py-1 rounded-full border border-slate-100">
-                      <PersonIcon sx={{ fontSize: 12 }} /> Customer: {selectedCustomer ? selectedCustomer.name : 'Guest'} {selectedCustomer?.phone ? `(${selectedCustomer.phone})` : ''}
+                      <PersonIcon sx={{ fontSize: 12 }} /> Customer: {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Guest')} {selectedCustomer?.phone ? `(${selectedCustomer.phone})` : ''}
                     </span>
                   </div>
                 </div>
