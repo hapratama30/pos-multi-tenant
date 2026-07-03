@@ -643,6 +643,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
       try {
         const res = await createXenditQR({
           tenantId: currentTenantId,
+          outletId: currentUser?.outlet_id || null,
           amount: totalAkhir,
           transactionId: savedTransaction.id
         });
@@ -666,6 +667,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
       try {
         const res = await createXenditVA({
           tenantId: currentTenantId,
+          outletId: currentUser?.outlet_id || null,
           bankCode: xenditVaBank,
           name: selectedCustomer?.name || 'AgraPOS Customer',
           amount: totalAkhir,

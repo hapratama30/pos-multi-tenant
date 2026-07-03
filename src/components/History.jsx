@@ -332,6 +332,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
       try {
         const res = await createXenditQR({
           tenantId,
+          outletId: tx.outlet_id,
           amount: tx.total,
           transactionId: tx.id
         });

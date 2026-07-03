@@ -17,12 +17,12 @@ export async function registerXenditTenant({ tenantId, businessName, emailBisnis
   return apiPost('/api/xendit/register-tenant', { tenantId, businessName, emailBisnis });
 }
 
-export async function createXenditQR({ tenantId, amount, transactionId }) {
-  return apiPost('/api/xendit/create-qr', { tenantId, amount, transactionId });
+export async function createXenditQR({ tenantId, outletId, amount, transactionId }) {
+  return apiPost('/api/xendit/create-qr', { tenantId, outletId, amount, transactionId });
 }
 
-export async function createXenditVA({ tenantId, bankCode, name, amount, transactionId }) {
-  return apiPost('/api/xendit/create-va', { tenantId, bankCode, name, amount, transactionId });
+export async function createXenditVA({ tenantId, outletId, bankCode, name, amount, transactionId }) {
+  return apiPost('/api/xendit/create-va', { tenantId, outletId, bankCode, name, amount, transactionId });
 }
 
 export async function getXenditStaticQR({ tenantId }) {
