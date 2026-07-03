@@ -61,7 +61,8 @@ app.get('/api/saas/platform-settings', async (req, res) => {
 
 app.get('/api/check-key', (req, res) => {
   const key = process.env.XENDIT_SECRET_KEY || '';
-  res.send(`Key length: ${key.length}, prefix: ${key.slice(0, 20)}`);
+  const hash = crypto.createHash('md5').update(key).digest('hex');
+  res.send(`Key length: ${key.length}, md5: ${hash}`);
 });
 
 app.post('/api/saas/platform-settings', async (req, res) => {
