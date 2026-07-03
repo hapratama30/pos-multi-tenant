@@ -535,12 +535,135 @@ app.post('/api/saas/register-paid-subscription', async (req, res) => {
     // Check if email already registered in staff
     const { data: existingStaff } = await supabase
       .from('staff')
-      .select('id')
+      .select('id, tenant_id')
       .eq('email', cleanEmail)
       .maybeSingle();
 
     if (existingStaff) {
-      return res.status(400).json({ error: 'Email ini sudah terdaftar di sistem.' });
+      // Cek status tenant-nya
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('status, tenant_id')
+        .eq('tenant_id', existingStaff.tenant_id)
+        .maybeSingle();
+
+      if (tenant && tenant.status === 'pending_payment') {
+        // Verifikasi password untuk keamanan menggunakan Supabase Auth API
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
+        });
+
+        if (signInError) {
+          return res.status(400).json({ error: 'Email ini sudah terdaftar dalam proses pembayaran pending. Silakan masukkan password yang benar untuk melanjutkan pembayaran.' });
+        }
+
+        // Cari billing pending yang sudah ada
+        let { data: billing } = await supabase
+          .from('tenant_billing')
+          .select('*')
+          .eq('tenant_id', tenant.tenant_id)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        // Jika billing tidak ditemukan (misal terhapus), buat baru
+        if (!billing) {
+          const { data: planData } = await supabase
+            .from('subscription_plans')
+            .select('price_monthly')
+            .eq('id', planId)
+            .maybeSingle();
+
+          const planPrice = planData?.price_monthly || 99000;
+
+          const { data: newBilling, error: newBillingErr } = await supabase
+            .from('tenant_billing')
+            .insert({
+              tenant_id: tenant.tenant_id,
+              plan_id: planId,
+              amount: planPrice,
+              status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (newBillingErr) {
+            return res.status(500).json({ error: 'Gagal membuat invoice baru.' });
+          }
+          billing = newBilling;
+        }
+
+        // Sekarang generate Xendit Payment baru (karena user mungkin ganti metode pembayaran atau bank)
+        const referenceId = `BILL-${billing.id}`;
+        const planPrice = billing.amount;
+
+        if (method === 'QRIS') {
+          const headers = {
+            ...xenditAuthHeader,
+            'api-version': '2022-07-31'
+          };
+          
+          const response = await axios.post(
+            'https://api.xendit.co/qr_codes',
+            {
+              reference_id: referenceId,
+              type: 'DYNAMIC',
+              currency: 'IDR',
+              amount: Number(planPrice)
+            },
+            { headers }
+          );
+
+          // Simpan Xendit QR ID ke DB
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: response.data.id,
+            payment_method: 'QRIS'
+          }).eq('id', billing.id);
+
+          return res.status(200).json({
+            success: true,
+            billingId: billing.id,
+            paymentData: {
+              qrString: response.data.qr_string,
+              paymentId: response.data.id,
+              referenceId
+            }
+          });
+        } else if (method === 'VA') {
+          const headers = { ...xenditAuthHeader };
+          
+          const response = await axios.post(
+            'https://api.xendit.co/callback_virtual_accounts',
+            {
+              external_id: referenceId,
+              bank_code: bankCode.toUpperCase(),
+              name: namaOwner || 'AGRAPos Subscriber',
+              expected_amount: Number(planPrice),
+              is_closed: true
+            },
+            { headers }
+          );
+
+          // Simpan Xendit VA ID ke DB
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: response.data.id,
+            payment_method: 'VA'
+          }).eq('id', billing.id);
+
+          return res.status(200).json({
+            success: true,
+            billingId: billing.id,
+            paymentData: {
+              accountNumber: response.data.account_number,
+              bankCode: response.data.bank_code,
+              paymentId: response.data.id,
+              referenceId
+            }
+          });
+        }
+      }
+
+      return res.status(400).json({ error: 'Email ini sudah terdaftar aktif di sistem. Silakan login.' });
     }
 
     // 1. Create Auth User
@@ -660,12 +783,135 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
     // Check if email already registered in staff
     const { data: existingStaff } = await supabase
       .from('staff')
-      .select('id')
+      .select('id, tenant_id')
       .eq('email', cleanEmail)
       .maybeSingle();
 
     if (existingStaff) {
-      return res.status(400).json({ error: 'Email ini sudah terdaftar di sistem.' });
+      // Cek status tenant-nya
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('status, tenant_id')
+        .eq('tenant_id', existingStaff.tenant_id)
+        .maybeSingle();
+
+      if (tenant && tenant.status === 'pending_payment') {
+        // Verifikasi password untuk keamanan menggunakan Supabase Auth API
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
+        });
+
+        if (signInError) {
+          return res.status(400).json({ error: 'Email ini sudah terdaftar dalam proses pembayaran pending. Silakan masukkan password yang benar untuk melanjutkan pembayaran.' });
+        }
+
+        // Cari billing pending yang sudah ada
+        let { data: billing } = await supabase
+          .from('tenant_billing')
+          .select('*')
+          .eq('tenant_id', tenant.tenant_id)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        // Jika billing tidak ditemukan (misal terhapus), buat baru
+        if (!billing) {
+          const { data: planData } = await supabase
+            .from('subscription_plans')
+            .select('price_monthly')
+            .eq('id', planId)
+            .maybeSingle();
+
+          const planPrice = planData?.price_monthly || 99000;
+
+          const { data: newBilling, error: newBillingErr } = await supabase
+            .from('tenant_billing')
+            .insert({
+              tenant_id: tenant.tenant_id,
+              plan_id: planId,
+              amount: planPrice,
+              status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (newBillingErr) {
+            return res.status(500).json({ error: 'Gagal membuat invoice baru.' });
+          }
+          billing = newBilling;
+        }
+
+        // Sekarang generate Xendit Payment baru (karena user mungkin ganti metode pembayaran atau bank)
+        const referenceId = `BILL-${billing.id}`;
+        const planPrice = billing.amount;
+
+        if (method === 'QRIS') {
+          const headers = {
+            ...xenditAuthHeader,
+            'api-version': '2022-07-31'
+          };
+          
+          const response = await axios.post(
+            'https://api.xendit.co/qr_codes',
+            {
+              reference_id: referenceId,
+              type: 'DYNAMIC',
+              currency: 'IDR',
+              amount: Number(planPrice)
+            },
+            { headers }
+          );
+
+          // Simpan Xendit QR ID ke DB
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: response.data.id,
+            payment_method: 'QRIS'
+          }).eq('id', billing.id);
+
+          return res.status(200).json({
+            success: true,
+            billingId: billing.id,
+            paymentData: {
+              qrString: response.data.qr_string,
+              paymentId: response.data.id,
+              referenceId
+            }
+          });
+        } else if (method === 'VA') {
+          const headers = { ...xenditAuthHeader };
+          
+          const response = await axios.post(
+            'https://api.xendit.co/callback_virtual_accounts',
+            {
+              external_id: referenceId,
+              bank_code: bankCode.toUpperCase(),
+              name: namaOwner || 'AGRAPos Subscriber',
+              expected_amount: Number(planPrice),
+              is_closed: true
+            },
+            { headers }
+          );
+
+          // Simpan Xendit VA ID ke DB
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: response.data.id,
+            payment_method: 'VA'
+          }).eq('id', billing.id);
+
+          return res.status(200).json({
+            success: true,
+            billingId: billing.id,
+            paymentData: {
+              accountNumber: response.data.account_number,
+              bankCode: response.data.bank_code,
+              paymentId: response.data.id,
+              referenceId
+            }
+          });
+        }
+      }
+
+      return res.status(400).json({ error: 'Email ini sudah terdaftar aktif di sistem. Silakan login.' });
     }
 
     // 1. Create Auth User

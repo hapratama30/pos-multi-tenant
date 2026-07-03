@@ -76,7 +76,7 @@ export default function Login({ onLoginSuccess, onNavigateToRegister, onNavigate
       // Blokir login jika belum bayar
       if (!tenantData || tenantData.status === 'pending_payment') {
         await supabase.auth.signOut();
-        throw new Error('Akun Anda belum aktif. Silakan selesaikan pembayaran terlebih dahulu untuk mengakses dashboard.');
+        throw new Error('Akun Anda belum aktif karena pembayaran pendaftaran belum diselesaikan. Silakan masukkan kembali email & kata sandi Anda di form Pendaftaran Landing Page untuk melanjutkan pembayaran.');
       }
       if (tenantData.status === 'suspended') {
         await supabase.auth.signOut();
