@@ -691,7 +691,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
     } else if (metodePembayaran === 'Virtual Account' && vaType === 'dinamis' && !xenditVaNumber) {
       generateVA();
     }
-  }, [metodePembayaran, qrisType, vaType, xenditVaBank, paymentFlow, savedTransaction?.id, currentTenantId, totalAkhir, selectedCustomer?.name]);
+  }, [metodePembayaran, qrisType, vaType, xenditVaBank, paymentFlow, savedTransaction?.id, currentTenantId, totalAkhir, selectedCustomer?.name, xenditQrCode, xenditVaNumber]);
 
   // Reset VA number when changing bank
   useEffect(() => {
