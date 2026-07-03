@@ -291,11 +291,18 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
     if (!tenantId) return;
     (async () => {
       try {
-        const { data } = await supabase
+        let query = supabase
           .from('payment_settings')
           .select('*')
-          .eq('tenant_id', tenantId)
-          .maybeSingle();
+          .eq('tenant_id', tenantId);
+
+        if (tx?.outlet_id) {
+          query = query.eq('outlet_id', tx.outlet_id);
+        } else {
+          query = query.is('outlet_id', null);
+        }
+
+        const { data } = await query.maybeSingle();
         if (!data) return;
         setPaymentSettings(data);
         const qrisMerchant = (data.xendit_merchant_id || '').split('|')[0];
@@ -310,7 +317,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
         if (list.length > 0) setAvailableMethods(list);
       } catch { }
     })();
-  }, [tenantId]);
+  }, [tenantId, tx?.outlet_id]);
 
   const meta = useMemo(() => getTransactionMeta(tx), [tx]);
   const isUnpaid = tx.payment_method === 'Belum Lunas';
