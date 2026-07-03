@@ -2415,7 +2415,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                       <button
                                         key={b}
                                         type="button"
-                                        onClick={() => setXenditVaBank(b)}
+                                        onClick={() => { setXenditVaBank(b); setXenditVaNumber(''); }}
                                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${xenditVaBank === b ? 'bg-teal-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                                       >
                                         {b}
