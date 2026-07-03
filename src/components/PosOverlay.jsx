@@ -269,7 +269,7 @@ const handlePrintNota = async ({
   const phoneHtml = storePhone ? `<div style="font-size:9px;color:#555">Tlp: ${storePhone}</div>` : '';
   const headerHtml = headerText ? `<div style="font-size:9px;font-style:italic;color:#444;margin-top:3px">${headerText}</div>` : '';
   const kasirHtml = showKasir ? `<div style="font-size:9px;margin-bottom:2px">Kasir: <b>${kasirStr}</b></div>` : '';
-  const customerName = selectedCustomer ? selectedCustomer.name : (customerSearch?.trim() || 'Guest (Umum)');
+  const customerName = selectedCustomer ? selectedCustomer.name : (customerSearch?.trim() || savedTransaction?.customer_name || 'Guest (Umum)');
   const customerHtml = `<div style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 4px 0 2px 0; line-height: 1.1;">${customerName}</div>`;
   const custPhoneHtml = selectedCustomer?.phone ? `<div style="font-size: 9px; font-weight: bold; margin-bottom: 4px;">Tlp: ${selectedCustomer.phone}</div>` : '';
   const catatanHtml = showCatatan && catatan
@@ -1025,7 +1025,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
     if (!formattedPhone.startsWith('62')) formattedPhone = '62' + formattedPhone;
 
     const kasirStr = resolveTransactionKasir(savedTransaction, currentUser);
-    const custName = selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Pelanggan Setia');
+    const custName = selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || savedTransaction?.customer_name || 'Pelanggan Setia');
     const waktuStr = waktuTransaksi
       ? new Date(waktuTransaksi).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
     const estimasiStr = estimasiSelesai
@@ -1334,7 +1334,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
     if (!currentTenantId) return alert('Tenant tidak terdeteksi.');
     try {
       const mockMeta = {
-        customer: selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Guest (Umum)'),
+        customer: selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || savedTransaction?.customer_name || 'Guest (Umum)'),
         phone: selectedCustomer?.phone || '-',
         kasir: getKasirName(currentUser),
         catatan: catatan || null,
@@ -2007,7 +2007,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                 <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">👤 Pelanggan</p>
                   <p className="text-xs font-black text-slate-800 truncate">
-                    {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Pelanggan Umum (Guest)')}
+                    {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || savedTransaction?.customer_name || 'Pelanggan Umum (Guest)')}
                   </p>
                   {selectedCustomer?.phone && (
                     <p className="text-[9px] text-slate-400 font-mono mt-0.5">{selectedCustomer.phone}</p>
@@ -2105,7 +2105,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
 
                   <div className="text-center mt-1">
                     <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-bold bg-white px-3 py-1 rounded-full border border-slate-100">
-                      <PersonIcon sx={{ fontSize: 12 }} /> Customer: {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Guest')} {selectedCustomer?.phone ? `(${selectedCustomer.phone})` : ''}
+                      <PersonIcon sx={{ fontSize: 12 }} /> Customer: {selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || savedTransaction?.customer_name || 'Guest')} {selectedCustomer?.phone ? `(${selectedCustomer.phone})` : ''}
                     </span>
                   </div>
                 </div>
