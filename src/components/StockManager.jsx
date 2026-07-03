@@ -154,29 +154,34 @@ export default function StockManager({ onBack, tenantId: propTenantId, currentUs
     }
   }, [tenantId, showToast]);
 
+
+
   const fetchUnits = useCallback(async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('product_units')
-        .select('id, name')
-        .eq('tenant_id', tenantId);
-
-      if (selectedOutletId) {
-        if (isMainOutlet) {
-          query = query.or(`outlet_id.eq.${selectedOutletId},outlet_id.is.null`);
-        } else {
-          query = query.eq('outlet_id', selectedOutletId);
-        }
-      } else {
-        query = query.is('outlet_id', null);
-      }
-
-      const { data, error } = await query.order('name', { ascending: true });
+        .select('id, name, tenant_id, outlet_id')
+        .or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
 
       if (error) throw error;
-      setProductUnits(data || []);
-      if (data && data.length > 0) {
-        setForm(prev => prev.unit ? prev : { ...prev, unit: data[0].name });
+
+      let filtered = data || [];
+      if (selectedOutletId) {
+        filtered = filtered.filter(u => {
+          if (!u.tenant_id) return true; // Global
+          if (u.outlet_id) return String(u.outlet_id) === String(selectedOutletId);
+          return isMainOutlet;
+        });
+      } else {
+        filtered = filtered.filter(u => !u.outlet_id);
+      }
+
+      // Sort alphabetically by name
+      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      setProductUnits(filtered);
+      if (filtered.length > 0) {
+        setForm(prev => prev.unit ? prev : { ...prev, unit: filtered[0].name });
       } else {
         setForm(prev => ({ ...prev, unit: '' }));
       }
@@ -204,27 +209,30 @@ export default function StockManager({ onBack, tenantId: propTenantId, currentUs
 
   const fetchCategories = useCallback(async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('product_categories')
-        .select('id, name')
-        .eq('tenant_id', tenantId);
-
-      if (selectedOutletId) {
-        if (isMainOutlet) {
-          query = query.or(`outlet_id.eq.${selectedOutletId},outlet_id.is.null`);
-        } else {
-          query = query.eq('outlet_id', selectedOutletId);
-        }
-      } else {
-        query = query.is('outlet_id', null);
-      }
-
-      const { data, error } = await query.order('name', { ascending: true });
+        .select('id, name, tenant_id, outlet_id')
+        .or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
 
       if (error) throw error;
-      setCategories(data || []);
-      if (data && data.length > 0) {
-        setForm(prev => prev.business_mode ? prev : { ...prev, business_mode: data[0].name });
+
+      let filtered = data || [];
+      if (selectedOutletId) {
+        filtered = filtered.filter(c => {
+          if (!c.tenant_id) return true; // Global
+          if (c.outlet_id) return String(c.outlet_id) === String(selectedOutletId);
+          return isMainOutlet;
+        });
+      } else {
+        filtered = filtered.filter(c => !c.outlet_id);
+      }
+
+      // Sort alphabetically by name
+      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      setCategories(filtered);
+      if (filtered.length > 0) {
+        setForm(prev => prev.business_mode ? prev : { ...prev, business_mode: filtered[0].name });
       } else {
         setForm(prev => ({ ...prev, business_mode: '' }));
       }

@@ -61,9 +61,8 @@ export function AddCustomerDialog({ onClose, onSaved, tenantId }) {
     </div>
   );
 }
-
 // ─── MINI DIALOG: TAMBAH PRODUK BARU ─────────────────────────────────────────
-export function AddProductDialog({ onClose, onSaved, tenantId }) {
+export function AddProductDialog({ onClose, onSaved, tenantId, outletId }) {
   const [form, setForm] = useState({ name: '', price: '', category: '', barcode: '' });
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -72,18 +71,40 @@ export function AddProductDialog({ onClose, onSaved, tenantId }) {
   useEffect(() => {
     (async () => {
       try {
+        let isMainOutlet = false;
+        if (outletId) {
+          const { data: outletData } = await supabase
+            .from('outlets')
+            .select('is_main')
+            .eq('id', outletId)
+            .maybeSingle();
+          if (outletData) isMainOutlet = outletData.is_main;
+        } else {
+          isMainOutlet = true;
+        }
+
         const { data } = await supabase
           .from('product_categories')
           .select('*')
           .or(`tenant_id.is.null,tenant_id.eq.${tenantId}`)
           .order('id', { ascending: true });
-        const filtered = data || [];
+        
+        const allCats = data || [];
+        const filtered = allCats.filter(c => {
+          if (!c.tenant_id) return true; // Global
+          if (outletId) {
+            if (c.outlet_id) return String(c.outlet_id) === String(outletId);
+            return isMainOutlet;
+          }
+          return true;
+        });
+
         setCategories(filtered);
         if (filtered.length > 0) setForm(prev => ({ ...prev, category: filtered[0].name }));
       // eslint-disable-next-line no-empty
       } catch { }
     })();
-  }, [tenantId]);
+  }, [tenantId, outletId]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -91,9 +112,17 @@ export function AddProductDialog({ onClose, onSaved, tenantId }) {
     setSaving(true);
     try {
       const { data, error } = await supabase.from('products').insert([{
-        tenant_id: tenantId, name: form.name.trim(), price: Number(form.price) || 0,
-        category: form.category || 'Umum', barcode: form.barcode.toUpperCase() || '',
-        is_active: true, duration: 0, duration_type: 'Menit', unit: 'Pcs', min_qty: 1
+        tenant_id: tenantId,
+        outlet_id: outletId ? Number(outletId) : null,
+        name: form.name.trim(),
+        price: Number(form.price) || 0,
+        category: form.category || 'Umum',
+        barcode: form.barcode.toUpperCase() || '',
+        is_active: true,
+        duration: 0,
+        duration_type: 'Menit',
+        unit: 'Pcs',
+        min_qty: 1
       }]).select().single();
       if (error) throw error;
       onSaved(data);

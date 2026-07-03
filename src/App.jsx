@@ -939,6 +939,8 @@ export default function App() {
           <PosOverlay 
             tenantId={tenantId}
             currentUser={{ ...currentUser, outlet_id: selectedOutletId }}
+            outlets={outlets}
+            selectedOutletId={selectedOutletId}
             onClose={() => handleTabChange('dashboard')} 
             onNavigate={handleTabChange}
             onSuccess={() => {

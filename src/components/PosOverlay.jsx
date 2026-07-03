@@ -2709,7 +2709,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         <AddCustomerDialog tenantId={currentTenantId} onClose={() => setShowAddCustomerDialog(false)} onSaved={handleCustomerSaved} />
       )}
       {showAddProductDialog && (
-        <AddProductDialog tenantId={currentTenantId} onClose={() => setShowAddProductDialog(false)} onSaved={handleProductSaved} />
+        <AddProductDialog tenantId={currentTenantId} outletId={currentUser?.outlet_id} onClose={() => setShowAddProductDialog(false)} onSaved={handleProductSaved} />
       )}
     </div>
   );

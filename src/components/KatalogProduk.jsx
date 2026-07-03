@@ -129,9 +129,8 @@ export default function KatalogProduk({ tenantId: propTenantId, selectedOutletId
 
   const filteredCategories = useMemo(() => {
     return categories.filter(c => {
+      if (!c.tenant_id) return true; // Global default
       if (selectedOutletId) {
-        // Jika item punya outlet_id, harus cocok. 
-        // Jika item outlet_id-nya null, kita anggap dia milik outlet utama (isMainOutlet).
         if (c.outlet_id) return String(c.outlet_id) === String(selectedOutletId);
         return isMainOutlet; 
       }
@@ -141,6 +140,7 @@ export default function KatalogProduk({ tenantId: propTenantId, selectedOutletId
 
   const filteredDurationUnits = useMemo(() => {
     return durationUnits.filter(d => {
+      if (!d.tenant_id) return true; // Global default
       if (selectedOutletId) {
         if (d.outlet_id) return String(d.outlet_id) === String(selectedOutletId);
         return isMainOutlet;
@@ -151,6 +151,7 @@ export default function KatalogProduk({ tenantId: propTenantId, selectedOutletId
 
   const filteredProductUnits = useMemo(() => {
     return productUnits.filter(u => {
+      if (!u.tenant_id) return true; // Global default
       if (selectedOutletId) {
         if (u.outlet_id) return String(u.outlet_id) === String(selectedOutletId);
         return isMainOutlet;
