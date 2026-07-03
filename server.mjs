@@ -902,6 +902,8 @@ app.post('/api/saas/simulate-billing-payment', async (req, res) => {
       return res.status(200).json({ success: true, message: 'Billing sudah berstatus paid.' });
     }
 
+    const referenceId = `BILL-${billingId}`;
+
     // Ambil Xendit Payment ID dari database (disimpan saat billing dibuat)
     const xenditPaymentId = billing.xendit_invoice_id;
     const paymentMethod = billing.payment_method || 'QRIS';
