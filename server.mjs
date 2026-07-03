@@ -102,6 +102,37 @@ app.post('/api/xendit/register-tenant', async (req, res) => {
     const activationUrl = xenditData.public_profile?.activation_url || '';
     const storedMerchantId = activationUrl ? `${xenditAccountId}|${activationUrl}` : xenditAccountId;
 
+    // OTOMATISASI: Set webhook URL untuk Sub-account baru secara programatik agar otomatis menerima callback
+    const hostUrl = process.env.VITE_API_URL || 'https://agrapos.vercel.app';
+    const cleanHostUrl = hostUrl.replace('localhost:5173', 'localhost:5000'); // fallback port server lokal jika diperlukan
+    const finalWebhookUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/xendit/webhook-payment`;
+
+    console.log(`[Auto-Webhook] Mendaftarkan URL callback otomatis ke sub-account: ${finalWebhookUrl}`);
+
+    // 1. Set callback QR Code Paid
+    try {
+      await axios.post(
+        'https://api.xendit.co/callback_urls/qr_code',
+        { url: finalWebhookUrl },
+        { headers: { ...xenditAuthHeader, 'for-user-id': xenditAccountId } }
+      );
+      console.log(`[Auto-Webhook] Sukses set qr_code callback untuk sub-account ${xenditAccountId}`);
+    } catch (cbErr) {
+      console.warn(`[Auto-Webhook Warning] Gagal set qr_code callback untuk ${xenditAccountId}:`, cbErr.response?.data || cbErr.message);
+    }
+
+    // 2. Set callback VA Paid
+    try {
+      await axios.post(
+        'https://api.xendit.co/callback_urls/fva_paid',
+        { url: finalWebhookUrl },
+        { headers: { ...xenditAuthHeader, 'for-user-id': xenditAccountId } }
+      );
+      console.log(`[Auto-Webhook] Sukses set fva_paid callback untuk sub-account ${xenditAccountId}`);
+    } catch (cbErr) {
+      console.warn(`[Auto-Webhook Warning] Gagal set fva_paid callback untuk ${xenditAccountId}:`, cbErr.response?.data || cbErr.message);
+    }
+
     const { error: supabaseError } = await supabase
       .from('payment_settings')
       .upsert(
