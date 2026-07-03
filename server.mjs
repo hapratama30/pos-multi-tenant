@@ -59,12 +59,6 @@ app.get('/api/saas/platform-settings', async (req, res) => {
   }
 });
 
-app.get('/api/check-key', (req, res) => {
-  const key = process.env.XENDIT_SECRET_KEY || '';
-  const hash = crypto.createHash('md5').update(key).digest('hex');
-  res.send(`Key length: ${key.length}, md5: ${hash}`);
-});
-
 app.post('/api/saas/platform-settings', async (req, res) => {
   const { pin, features } = req.body;
   const SUPERADMIN_PIN = process.env.VITE_SUPERADMIN_PIN || '@Hapratama30';
