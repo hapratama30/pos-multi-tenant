@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import { printTransactionReceipt, sendTransactionWhatsApp, printDirectBluetooth } from '../utils/transactionReceipt';
 import { formatRupiah } from '../utils/platformAdmin';
 import { defaultMonthToTodayRange, isInDateRange } from '../utils/dateFilters';
-import { createXenditQR } from '../utils/api';
+import { createXenditQR, createXenditVA } from '../utils/api';
 
 // Metode pembayaran di-build dinamis dari settings — lihat buildHistoryPaymentMethods()
 
@@ -283,6 +283,8 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
 
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [xenditQrCode, setXenditQrCode] = useState('');
+  const [xenditVaNumber, setXenditVaNumber] = useState('');
+  const [xenditVaBank, setXenditVaBank] = useState('BCA');
   const [loadingXendit, setLoadingXendit] = useState(false);
   const [errorXendit, setErrorXendit] = useState('');
 
@@ -325,6 +327,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
   // Reset states when transaction changes
   useEffect(() => {
     setXenditQrCode('');
+    setXenditVaNumber('');
     setErrorXendit('');
   }, [tx?.id]);
 
@@ -360,9 +363,42 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
     }
   }, [paymentMethod, showPaymentPanel, isUnpaid, tx?.id, tenantId, tx?.total, xenditQrCode]);
 
+  // Generate dynamic VA
+  useEffect(() => {
+    if (!isUnpaid || !showPaymentPanel || paymentMethod !== 'Virtual Account' || !tx?.id) {
+      return;
+    }
+    const generateVA = async () => {
+      setLoadingXendit(true);
+      setErrorXendit('');
+      setXenditVaNumber('');
+      try {
+        const res = await createXenditVA({
+          tenantId,
+          outletId: tx.outlet_id,
+          bankCode: xenditVaBank,
+          name: tx.customer_name || 'AgraPOS Customer',
+          amount: tx.total,
+          transactionId: tx.id
+        });
+        if (res.success) {
+          setXenditVaNumber(res.accountNumber || '');
+        } else {
+          throw new Error(res.error || 'Gagal generate VA');
+        }
+      } catch (err) {
+        console.error('Error generating Xendit VA in History:', err);
+        setErrorXendit(err.message || 'Gagal generate VA.');
+      } finally {
+        setLoadingXendit(false);
+      }
+    };
+    generateVA();
+  }, [paymentMethod, showPaymentPanel, isUnpaid, tx?.id, tenantId, tx?.total, xenditVaBank]);
+
   // Polling status pembayaran
   useEffect(() => {
-    if (!isUnpaid || !showPaymentPanel || paymentMethod !== 'QRIS' || !tx?.id) return;
+    if (!isUnpaid || !showPaymentPanel || (paymentMethod !== 'QRIS' && paymentMethod !== 'Virtual Account') || !tx?.id) return;
 
     const checkStatus = async () => {
       try {
@@ -378,7 +414,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
           setTx(updated);
           onUpdated?.(updated);
           setShowPaymentPanel(false);
-          setActionMsg({ type: 'success', text: `Pembayaran QRIS Berhasil Diterima!` });
+          setActionMsg({ type: 'success', text: `Pembayaran Berhasil Diterima!` });
           setShowSuccessModal(true);
         }
       } catch (err) {
@@ -752,6 +788,81 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                     </div>
                   ) : (
                     <div className="text-center text-xs text-slate-400 font-bold">Gagal memuat QRIS.</div>
+                  )}
+                </div>
+              )}
+
+              {/* DYNAMIC VA DISPLAY */}
+              {paymentMethod === 'Virtual Account' && (
+                <div className="flex flex-col items-center justify-center p-4 border border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3 shrink-0">
+                  <div className="flex justify-center gap-1.5 flex-wrap w-full py-1">
+                    {['BCA', 'Mandiri', 'BNI', 'BRI'].map(b => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setXenditVaBank(b)}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${xenditVaBank === b ? 'bg-teal-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+
+                  {loadingXendit ? (
+                    <div className="text-center py-6">
+                      <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API Xendit...</p>
+                    </div>
+                  ) : errorXendit ? (
+                    <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
+                      {errorXendit}
+                    </div>
+                  ) : xenditVaNumber ? (
+                    <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3 w-full">
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (Xendit)</p>
+                        <p className="font-mono font-black text-sm text-slate-900 tracking-wider break-all">{xenditVaNumber}</p>
+                        <p className="text-[8px] text-slate-400 font-bold mt-0.5 truncate">Total: {formatRp(tx.total)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { navigator.clipboard?.writeText(xenditVaNumber); setActionMsg({ type: 'success', text: 'VA disalin!' }); }}
+                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-teal-50 text-teal-700 border border-teal-100 hover:bg-teal-100 transition-all cursor-pointer border-none"
+                      >
+                        Salin
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-slate-400 text-center font-bold">Pilih bank untuk menghasilkan VA.</p>
+                  )}
+
+                  {xenditVaNumber && typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              external_id: String(tx.id),
+                              amount: tx.total,
+                              bank_code: xenditVaBank
+                            })
+                          });
+                          if (response.ok) {
+                            setActionMsg({ type: 'success', text: 'Simulasi Bayar Terkirim! Status akan terupdate otomatis.' });
+                          } else {
+                            setActionMsg({ type: 'error', text: 'Gagal memicu simulasi.' });
+                          }
+                        } catch (err) {
+                          setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
+                        }
+                      }}
+                      className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+                    >
+                      ⚡ Simulasikan Pembayaran VA (Sandbox)
+                    </button>
                   )}
                 </div>
               )}
