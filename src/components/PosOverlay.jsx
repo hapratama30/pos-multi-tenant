@@ -211,7 +211,7 @@ const createHoldSnapshot = (state) => ({
 // ─── PRINT NOTA HELPER (PAKAI SETTING REAL + SHOW FLAGS) ─────────────────────
 const handlePrintNota = async ({
   savedTransaction, cart, totalAkhir, subTotal, activeDiscountValue,
-  biayaTambahan, selectedCustomer, waktuTransaksi, estimasiSelesai,
+  biayaTambahan, selectedCustomer, customerSearch, waktuTransaksi, estimasiSelesai,
   catatan, tenantId, currentUser, taxBreakdown
 }) => {
   const win = window.open('', '_blank', 'width=400,height=600');
@@ -269,7 +269,9 @@ const handlePrintNota = async ({
   const phoneHtml = storePhone ? `<div style="font-size:9px;color:#555">Tlp: ${storePhone}</div>` : '';
   const headerHtml = headerText ? `<div style="font-size:9px;font-style:italic;color:#444;margin-top:3px">${headerText}</div>` : '';
   const kasirHtml = showKasir ? `<div style="font-size:9px;margin-bottom:2px">Kasir: <b>${kasirStr}</b></div>` : '';
-  const custPhone = selectedCustomer?.phone ? `<div style="font-size:9px;margin-bottom:2px">Tlp: ${selectedCustomer.phone}</div>` : '';
+  const customerName = selectedCustomer ? selectedCustomer.name : (customerSearch?.trim() || 'Guest (Umum)');
+  const customerHtml = `<div style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 4px 0 2px 0; line-height: 1.1;">${customerName}</div>`;
+  const custPhoneHtml = selectedCustomer?.phone ? `<div style="font-size: 9px; font-weight: bold; margin-bottom: 4px;">Tlp: ${selectedCustomer.phone}</div>` : '';
   const catatanHtml = showCatatan && catatan
     ? `<div class="divider"></div><div style="font-size:9px">📝 Catatan: ${catatan}</div>` : '';
   const footerHtml = footerText
@@ -413,10 +415,8 @@ const handlePrintNota = async ({
       : ''
     }
         <div class="divider"></div>
-        <div style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 4px 0 2px 0; line-height: 1.1;">
-          ${selectedCustomer?.name || 'Guest (Umum)'}
-        </div>
-        ${selectedCustomer?.phone ? `<div style="font-size: 9px; font-weight: bold; margin-bottom: 4px;">Tlp: ${selectedCustomer.phone}</div>` : ''}
+        ${customerHtml}
+        ${custPhoneHtml}
         <div class="divider"></div>
         <div style="font-size:9px;margin-bottom:2px">No. Nota: <b>${savedTransaction?.invoice_number || savedTransaction?.id || '-'}</b></div>
         <div style="font-size:9px;margin-bottom:2px">Waktu: ${waktuStr}</div>
@@ -1025,7 +1025,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
     if (!formattedPhone.startsWith('62')) formattedPhone = '62' + formattedPhone;
 
     const kasirStr = resolveTransactionKasir(savedTransaction, currentUser);
-    const custName = selectedCustomer?.name || 'Pelanggan Setia';
+    const custName = selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Pelanggan Setia');
     const waktuStr = waktuTransaksi
       ? new Date(waktuTransaksi).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
     const estimasiStr = estimasiSelesai
@@ -1140,7 +1140,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
       const kasirStr = getKasirName(currentUser);
       const detailCustomerStr = selectedCustomer
         ? `[Customer: ${selectedCustomer.name} | Tlp: ${selectedCustomer.phone || '-'}]`
-        : '[Customer: Guest (Umum)]';
+        : `[Customer: ${customerSearch.trim() || 'Guest (Umum)'}]`;
       const kasirNote = `[Kasir: ${kasirStr}]`;
       const diskonStr = activeDiscountValue > 0 ? `[Diskon: ${formatRp(activeDiscountValue)}]` : '';
       const biayaTambahanStr = biayaTambahan ? `[Biaya Tambahan: ${formatRp(biayaTambahan)}]` : '';
@@ -1171,6 +1171,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         invoice_number: invoiceNumber,
         shift_id: activeShiftId,
         outlet_id: currentUser?.outlet_id || null,
+        customer_name: selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || null),
       };
       const payloadWithKasir = {
         ...basePayload,
@@ -1324,16 +1325,16 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
   const handlePrint = useCallback(() => {
     handlePrintNota({
       savedTransaction, cart, totalAkhir, subTotal, activeDiscountValue,
-      biayaTambahan, selectedCustomer, waktuTransaksi, estimasiSelesai,
+      biayaTambahan, selectedCustomer, customerSearch, waktuTransaksi, estimasiSelesai,
       catatan, tenantId: currentTenantId, currentUser, taxBreakdown
     });
-  }, [savedTransaction, cart, totalAkhir, subTotal, activeDiscountValue, biayaTambahan, selectedCustomer, waktuTransaksi, estimasiSelesai, catatan, currentTenantId, currentUser, taxBreakdown]);
+  }, [savedTransaction, cart, totalAkhir, subTotal, activeDiscountValue, biayaTambahan, selectedCustomer, customerSearch, waktuTransaksi, estimasiSelesai, catatan, currentTenantId, currentUser, taxBreakdown]);
 
   const handlePrintBluetooth = useCallback(async () => {
     if (!currentTenantId) return alert('Tenant tidak terdeteksi.');
     try {
       const mockMeta = {
-        customer: selectedCustomer?.name || 'Guest (Umum)',
+        customer: selectedCustomer ? selectedCustomer.name : (customerSearch.trim() || 'Guest (Umum)'),
         phone: selectedCustomer?.phone || '-',
         kasir: getKasirName(currentUser),
         catatan: catatan || null,
