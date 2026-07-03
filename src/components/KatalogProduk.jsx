@@ -619,11 +619,11 @@ export default function KatalogProduk({ tenantId: propTenantId, selectedOutletId
                 </div>
               </div>
 
-              {isJasa && (
-                <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600 ml-1">Detail Layanan Jasa</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4 animate-in zoom-in-95 duration-300">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600 ml-1">Detail Satuan & Durasi</p>
+                <div className={`grid grid-cols-1 ${isJasa ? 'md:grid-cols-2' : ''} gap-4`}>
 
+                  {isJasa && (
                     <div className="bg-white p-5 rounded-[2rem] border border-slate-200/60 shadow-sm space-y-3">
                       <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Estimasi Durasi</label>
                       <div className="flex bg-slate-50 rounded-2xl border border-slate-200/60 overflow-hidden focus-within:border-teal-500 transition-all">
@@ -633,22 +633,22 @@ export default function KatalogProduk({ tenantId: propTenantId, selectedOutletId
                         </select>
                       </div>
                     </div>
- 
-                    <div className="bg-white p-5 rounded-[2rem] border border-slate-200/60 shadow-sm space-y-3">
-                      <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Satuan & Minimal Order</label>
-                      <div className="flex bg-slate-50 rounded-2xl border border-slate-200/60 overflow-hidden focus-within:border-teal-500 transition-all">
-                        <select value={form.unit || filteredProductUnits[0]?.name || 'Pcs'} onChange={e => setForm({ ...form, unit: e.target.value })} className="w-full p-4 text-[9px] font-black uppercase bg-transparent focus:outline-none">
-                          {filteredProductUnits.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                        </select>
-                        <div className="flex items-center px-4 bg-slate-50 border-l border-slate-200/60">
-                          <input type="number" value={form.min_qty !== null && form.min_qty !== undefined ? form.min_qty : '1'} onChange={e => setForm({ ...form, min_qty: e.target.value })} className="w-12 text-center text-xs font-mono font-black bg-transparent focus:outline-none" />
-                        </div>
+                  )}
+
+                  <div className="bg-white p-5 rounded-[2rem] border border-slate-200/60 shadow-sm space-y-3">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Satuan & Minimal Order</label>
+                    <div className="flex bg-slate-50 rounded-2xl border border-slate-200/60 overflow-hidden focus-within:border-teal-500 transition-all">
+                      <select value={form.unit || filteredProductUnits[0]?.name || 'Pcs'} onChange={e => setForm({ ...form, unit: e.target.value })} className="w-full p-4 text-[9px] font-black uppercase bg-transparent focus:outline-none">
+                        {filteredProductUnits.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                      </select>
+                      <div className="flex items-center px-4 bg-slate-50 border-l border-slate-200/60">
+                        <input type="number" value={form.min_qty !== null && form.min_qty !== undefined ? form.min_qty : '1'} onChange={e => setForm({ ...form, min_qty: e.target.value })} className="w-12 text-center text-xs font-mono font-black bg-transparent focus:outline-none" />
                       </div>
                     </div>
-
                   </div>
+
                 </div>
-              )}
+              </div>
 
               <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200/60 shadow-sm space-y-3">
                 <button
