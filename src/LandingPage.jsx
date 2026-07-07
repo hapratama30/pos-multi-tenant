@@ -140,7 +140,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
           </div>
 
           <nav className="hidden md:flex items-center gap-6">
-            {['fitur', 'cara-kerja', 'harga', 'keunggulan'].map((id) => (
+            {['fitur', 'cara-kerja', 'harga', 'keunggulan', 'kontak'].map((id) => (
               <button
                 key={id}
                 type="button"
@@ -149,7 +149,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                   scrolled ? 'text-slate-500 hover:text-teal-600' : 'text-white/80 hover:text-white'
                 }`}
               >
-                {id === 'fitur' ? 'Fitur' : id === 'cara-kerja' ? 'Cara Kerja' : id === 'harga' ? 'Harga' : 'Keunggulan'}
+                {id === 'fitur' ? 'Fitur' : id === 'cara-kerja' ? 'Cara Kerja' : id === 'harga' ? 'Harga' : id === 'keunggulan' ? 'Keunggulan' : 'Hubungi Kami'}
               </button>
             ))}
           </nav>
@@ -568,7 +568,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
               <svg className="w-3 h-3 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Pembayaran Aman Terintegrasi via Xendit (Test Mode Ready)
+              Pembayaran Aman Terintegrasi via Xendit
             </p>
           </div>
         </div>
@@ -584,7 +584,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
               <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Profil Bisnis & Deskripsi Layanan</p>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Tentang AGRAPos Platform</h2>
               <p className="text-sm text-slate-650 leading-relaxed font-medium">
-                AGRAPos (di bawah naungan <strong>Agra Teknologi</strong>) merupakan platform penyedia software kasir berbasis cloud (Software-as-a-Service / SaaS) yang dirancang khusus untuk mempercepat pertumbuhan dan tata kelola operasional pelaku UMKM, ritel, restoran, dan franchise di Indonesia. Kami menyediakan sistem Point of Sale mandiri yang aman, andal, dan mudah diakses untuk membantu pencatatan transaksi kasir, pengawasan stok gudang, pembukuan keuangan otomatis, hingga pengawasan karyawan secara real-time.
+                AGRAPos (di bawah naungan <strong>PT Agra Abhinaya Perkasa</strong>) merupakan platform penyedia software kasir berbasis cloud (Software-as-a-Service / SaaS) yang dirancang khusus untuk mempercepat pertumbuhan dan tata kelola operasional pelaku UMKM, ritel, restoran, dan franchise di Indonesia. Kami menyediakan sistem Point of Sale mandiri yang aman, andal, dan mudah diakses untuk membantu pencatatan transaksi kasir, pengawasan stok gudang, pembukuan keuangan otomatis, hingga pengawasan karyawan secara real-time.
               </p>
             </div>
             
@@ -637,7 +637,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Resmi</p>
-                    <p className="text-sm font-bold text-slate-800">{contact?.email || 'agratechnology90@gmail.com'}</p>
+                    <p className="text-sm font-bold text-slate-800">{contact?.email || 'agratechnology@gmail.com'}</p>
                   </div>
                 </div>
                 
@@ -650,7 +650,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alamat Kantor Resmi</p>
-                    <p className="text-sm font-bold text-slate-800 leading-snug">{contact?.address || 'Jl. Kemang Raya No. 10, RT.11/RW.1, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730'}</p>
+                    <p className="text-sm font-bold text-slate-800 leading-snug">{contact?.address || 'Jl. Utan Kayu Raya No. 102, RT. 012 RW. 010, Utan Kayu Utara, Matraman, Kota Adm. Jakarta Timur, DKI Jakarta'}</p>
                   </div>
                 </div>
 
@@ -796,7 +796,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
             <div>
               <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6">Kontak</h4>
               <ul className="space-y-4">
-                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'agratechnology90@gmail.com'}</li>
+                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'agratechnology@gmail.com'}</li>
                 <li className="text-xs font-bold text-slate-500">{contact?.phone || '+62 856-9566-0902'}</li>
               </ul>
             </div>
@@ -1070,7 +1070,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
                     )}
                   </div>
 
-                  {!(typeof window !== 'undefined' && window.location.hostname === 'agrapos.vercel.app') && (
+                  {(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
                     <>
                       <div className="bg-teal-50 border border-teal-100/60 rounded-3xl p-5 text-left max-w-sm mx-auto space-y-3">
                         <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest flex items-center gap-1.5">

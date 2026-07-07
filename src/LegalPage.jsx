@@ -206,7 +206,7 @@ export default function LegalPage({ type, onNavigateToHome, isLoggedIn }) {
                   4. Pengecualian Khusus & Double Billing
                 </h3>
                 <ul className="list-disc pl-5 space-y-2">
-                  <li>Jika terjadi kegagalan sistem yang menyebabkan double billing (terpotong saldo ganda atas satu tagihan yang sama), silakan hubungi tim CS kami melalui email <strong>agratechnology90@gmail.com</strong> dalam waktu maksimal 1x24 jam sejak transaksi dilakukan.</li>
+                  <li>Jika terjadi kegagalan sistem yang menyebabkan double billing (terpotong saldo ganda atas satu tagihan yang sama), silakan hubungi tim CS kami melalui email <strong>agratechnology@gmail.com</strong> dalam waktu maksimal 1x24 jam sejak transaksi dilakukan.</li>
                   <li>Tim keuangan kami akan melakukan investigasi dalam waktu 3 hari kerja. Jika keluhan terbukti valid akibat galat teknis di sisi kami atau gateway pembayaran, pengembalian dana penuh untuk transaksi ganda tersebut akan ditransfer kembali ke rekening asal Anda.</li>
                 </ul>
               </section>
@@ -272,7 +272,7 @@ export default function LegalPage({ type, onNavigateToHome, isLoggedIn }) {
             <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Butuh Bantuan Hukum?</p>
-                <p className="text-sm font-bold text-slate-700">agratechnology90@gmail.com</p>
+                <p className="text-sm font-bold text-slate-700">agratechnology@gmail.com</p>
               </div>
               <button
                 onClick={onNavigateToHome}
@@ -327,7 +327,7 @@ export default function LegalPage({ type, onNavigateToHome, isLoggedIn }) {
           <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Butuh Bantuan Hukum?</p>
-              <p className="text-sm font-bold text-slate-700">agratechnology90@gmail.com</p>
+              <p className="text-sm font-bold text-slate-700">agratechnology@gmail.com</p>
             </div>
             <button
               onClick={onNavigateToHome}

@@ -62,12 +62,12 @@ export const DEFAULT_LANDING_CONTENT = {
   },
   footer: {
     tagline: 'All In One General Retail Automation',
-    copyright: 'AGRAPos Platform',
+    copyright: 'PT Agra Abhinaya Perkasa',
   },
   contact: {
-    email: 'agratechnology90@gmail.com',
+    email: 'agratechnology@gmail.com',
     phone: '+62 856-9566-0902',
-    address: 'Jl. Raya Bogor No. 123, Jakarta Timur, Indonesia',
+    address: 'Jl. Utan Kayu Raya No. 102, RT. 012 RW. 010, Utan Kayu Utara, Matraman, Kota Adm. Jakarta Timur, DKI Jakarta',
     whatsapp: '6285695660902',
   },
   legal: {
