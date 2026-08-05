@@ -901,7 +901,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 grayscale opacity-50">
                 <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">Secure Payment by</span>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Xendit_Logo.png/640px-Xendit_Logo.png" alt="Xendit" className="h-3 w-auto" />
+                <span className="text-[10px] font-black tracking-tight text-teal-600 font-sans">iPay<span className="text-orange-500">mu</span></span>
               </div>
               <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Built with ❤️ in Indonesia</span>
             </div>
@@ -1020,7 +1020,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
 
                   {/* Payment selection */}
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Metode Pembayaran (Xendit)</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pilih Metode Pembayaran</label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className={`flex items-center justify-between p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'QRIS' ? 'border-teal-500 bg-teal-50/40 text-teal-900 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-2">
