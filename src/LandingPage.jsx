@@ -1,6 +1,6 @@
 /* eslint-disable */
 import React, { useState, useEffect, useCallback } from 'react';
-import { DEFAULT_LANDING_CONTENT, fetchLandingContent } from './utils/landingContent';
+import { DEFAULT_LANDING_CONTENT, fetchLandingContent, getLandingContent } from './utils/landingContent';
 import { fetchPublicSubscriptionPlans, formatRupiah } from './utils/platformAdmin';
 import { ALL_MODULES, MODULE_CATEGORIES } from './config/platformModules';
 
@@ -31,6 +31,7 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
   const [checkoutError, setCheckoutError] = useState('');
   const [completingSignup, setCompletingSignup] = useState(false);
   const [billingId, setBillingId] = useState(null);
+  const [activeFaq, setActiveFaq] = useState(null);
 
   
   const navigateToLegal = (type) => {
@@ -40,13 +41,42 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
 
   const reloadContent = useCallback(async () => {
     setLoading(true);
-    const [landingData, planData] = await Promise.all([
-      fetchLandingContent(),
-      fetchPublicSubscriptionPlans().catch(() => [])
-    ]);
-    setContent(landingData);
-    setPlans(planData);
-    setLoading(false);
+    const timeout = (promise, ms) => {
+      let id;
+      const timeoutPromise = new Promise((resolve) => {
+        id = setTimeout(() => {
+          resolve(null);
+        }, ms);
+      });
+      return Promise.race([
+        promise.then((res) => {
+          clearTimeout(id);
+          return res;
+        }),
+        timeoutPromise
+      ]);
+    };
+
+    try {
+      const [landingData, planData] = await Promise.all([
+        timeout(fetchLandingContent(), 2000).catch((err) => {
+          console.warn('[Landing] fetchLandingContent timeout or error:', err);
+          return null;
+        }),
+        timeout(fetchPublicSubscriptionPlans(), 2000).catch((err) => {
+          console.warn('[Landing] fetchPublicSubscriptionPlans timeout or error:', err);
+          return [];
+        })
+      ]);
+      setContent(landingData || getLandingContent());
+      setPlans(planData || []);
+    } catch (err) {
+      console.warn('[Landing] reloadContent error:', err);
+      setContent(getLandingContent());
+      setPlans([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -722,6 +752,65 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
         </div>
       </section>
 
+      {/* ── FAQ SECTION ── */}
+      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6 bg-slate-50 border-t border-slate-100">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <p className="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mb-2">FAQ</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Pertanyaan yang Sering Diajukan</h2>
+            <p className="mt-3 text-sm text-slate-500 font-medium">Temukan jawaban atas berbagai pertanyaan umum tentang layanan, fitur, keamanan, dan proses pembayaran AGRAPos.</p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "Apa itu AGRAPos?",
+                a: "AGRAPos adalah platform Point of Sale (POS) Multi-Tenant berbasis cloud yang dirancang khusus untuk mempermudah operasional kasir, manajemen inventaris, dan laporan keuangan UMKM Indonesia dalam satu sistem terintegrasi."
+              },
+              {
+                q: "Bagaimana cara mendaftar dan mengaktifkan akun?",
+                a: "Anda cukup memilih paket yang sesuai di bagian harga, lalu isi formulir pendaftaran. Setelah itu, selesaikan pembayaran invoice melalui QRIS atau Virtual Account (Mandiri, BCA, BNI, BRI) yang disediakan secara aman melalui iPaymu. Akun Anda akan aktif seketika setelah pembayaran diverifikasi secara otomatis oleh sistem kami."
+              },
+              {
+                q: "Apakah ada biaya tambahan atau komisi transaksi?",
+                a: "Tidak ada. Kami menerapkan sistem langganan tetap bulanan sesuai paket yang Anda pilih. Biaya administrasi pembayaran gateway (MDR) disesuaikan dengan ketentuan standard iPaymu tanpa biaya tambahan dari platform kami."
+              },
+              {
+                q: "Apakah data transaksi toko saya aman?",
+                a: "Keamanan data adalah prioritas utama kami. AGRAPos menggunakan enkripsi standar industri dan penyimpanan cloud aman terenkripsi di Supabase untuk memastikan seluruh data transaksi, produk, dan laporan keuangan Anda terlindungi dengan aman 24/7."
+              },
+              {
+                q: "Bagaimana jika saya membutuhkan bantuan teknis?",
+                a: "Tim bantuan pelanggan kami siap membantu Anda kapan saja. Anda dapat menghubungi kami melalui detail kontak di bagian footer website, baik melalui email di support@agrapos.id maupun layanan obrolan instan WhatsApp di nomor +62 856-9566-0902."
+              }
+            ].map((faq, idx) => (
+              <div 
+                key={idx} 
+                className="bg-white border border-slate-100 rounded-3xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="w-full px-6 py-5 text-left flex justify-between items-center gap-4 cursor-pointer outline-none bg-transparent"
+                >
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{faq.q}</span>
+                  <span className={`text-slate-400 transform transition-transform duration-300 text-xl font-bold ${activeFaq === idx ? 'rotate-45' : ''}`}>
+                    +
+                  </span>
+                </button>
+                <div 
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${activeFaq === idx ? 'max-h-48 border-t border-slate-50' : 'max-h-0'}`}
+                >
+                  <p className="px-6 py-5 text-xs sm:text-sm text-slate-500 font-medium leading-relaxed bg-slate-50/30">
+                    {faq.a}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA FINAL ── */}
       <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div
@@ -794,10 +883,13 @@ export default function LandingPage({ onNavigateToLogin, onNavigateToRegister })
             </div>
 
             <div>
-              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6">Kontak</h4>
-              <ul className="space-y-4">
-                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'agratechnology@gmail.com'}</li>
+              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6">Kontak & Alamat</h4>
+              <ul className="space-y-3">
+                <li className="text-xs font-bold text-slate-500 break-words">{contact?.email || 'hafidzagus24@gmail.com'}</li>
                 <li className="text-xs font-bold text-slate-500">{contact?.phone || '+62 856-9566-0902'}</li>
+                <li className="text-[10px] font-medium text-slate-400 leading-relaxed pt-1">
+                  {contact?.address || 'Jl. Utan Kayu Raya No. 102, RT. 012 RW. 010, Utan Kayu Utara, Matraman, Kota Adm. Jakarta Timur, DKI Jakarta'}
+                </li>
               </ul>
             </div>
           </div>

@@ -65,7 +65,7 @@ export const DEFAULT_LANDING_CONTENT = {
     copyright: 'PT Agra Abhinaya Perkasa',
   },
   contact: {
-    email: 'agratechnology@gmail.com',
+    email: 'hafidzagus24@gmail.com',
     phone: '+62 856-9566-0902',
     address: 'Jl. Utan Kayu Raya No. 102, RT. 012 RW. 010, Utan Kayu Utara, Matraman, Kota Adm. Jakarta Timur, DKI Jakarta',
     whatsapp: '6285695660902',

@@ -13,6 +13,7 @@ export default function Register({ onNavigateToLogin, onRegisterSuccess, onNavig
   const [errorMsg, setErrorMsg]     = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
 
   const slides = [
     {
@@ -412,16 +413,49 @@ export default function Register({ onNavigateToLogin, onRegisterSuccess, onNavig
               <label style={{ display:'block', fontSize:'9.5px', fontWeight:700, color:'#64748b', marginBottom:'2px' }}>
                 Kata Sandi Baru (Min. 6 Karakter)
               </label>
-              <input
-                type="password" required placeholder="••••••••" minLength={6}
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width:'100%', boxSizing:'border-box',
-                  background:'#f8fafc', border:'1px solid #e2e8f0',
-                  borderRadius:'10px', padding:'7px 11px',
-                  fontSize:'12.5px', color:'#334155', outline:'none',
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'} required placeholder="••••••••" minLength={6}
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width:'100%', boxSizing:'border-box',
+                    background:'#f8fafc', border:'1px solid #e2e8f0',
+                    borderRadius:'10px', padding:'7px 36px 7px 11px',
+                    fontSize:'12.5px', color:'#334155', outline:'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#94a3b8',
+                    padding: 0,
+                    outline: 'none',
+                  }}
+                  title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L1.39 1.39m13.91 13.91L22.61 22.61M21.542 12a9.979 9.979 0 00-1.563-3.029m-5.858-2.911A9.972 9.972 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L12 12" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button

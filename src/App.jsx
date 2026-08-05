@@ -310,6 +310,66 @@ export default function App() {
     );
   }, [transactions, selectedOutletId, outlets]);
 
+  const hasPermission = (tabName) => {
+    if (!currentUser) return false;
+
+    // 0. Global Feature Gating (Hidden features check)
+    const tabToModuleMap = {
+      'pos': 'pos',
+      'history': 'history',
+      'catalog': 'catalog',
+      'variants': 'variants',
+      'customers': 'customers',
+      'stock': 'stock',
+      'discounts': 'discounts',
+      'expenses': 'expenses',
+      'reports': 'reports',
+      'employees': 'staff',
+      'outlets': 'outlets',
+      'shifts': 'shifts',
+      'ppob-history': 'ppob',
+      'ppob-topup': 'ppob',
+      'ppob-withdraw': 'ppob'
+    };
+    const requiredModule = tabToModuleMap[tabName];
+    if (requiredModule && platformSettings?.pos_features?.[requiredModule]?.status === 'hidden') {
+      return false;
+    }
+
+    // 1. SaaS Gating Check (berlaku untuk Owner dan Admin)
+    const baseTabs = ['dashboard', 'settings'];
+    if (!baseTabs.includes(tabName)) {
+      const enabledModules = Array.isArray(currentUser.enabled_modules) ? currentUser.enabled_modules : [];
+      const tabToModuleMap = {
+        'pos': 'pos',
+        'history': 'history',
+        'catalog': 'catalog',
+        'variants': 'variants',
+        'customers': 'customers',
+        'stock': 'stock',
+        'discounts': 'discounts',
+        'expenses': 'expenses',
+        'reports': 'reports',
+        'employees': 'staff',
+        'outlets': 'outlets',
+        'shifts': 'shifts',
+        'ppob-history': 'ppob',
+        'ppob-topup': 'ppob',
+        'ppob-withdraw': 'ppob'
+      };
+      const requiredModule = tabToModuleMap[tabName];
+      if (requiredModule && !enabledModules.includes('all') && !enabledModules.includes(requiredModule)) {
+        return false;
+      }
+    }
+
+    // 2. Role-Based Access Control (RBAC)
+    if (currentUser.role === 'Owner' || currentUser.role === 'Admin') return true;
+    const userPerms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    if (['dashboard', 'settings', 'ppob-history', 'ppob-topup', 'ppob-withdraw'].includes(tabName)) return true;
+    if (tabName === 'employees') return userPerms.includes('settings');
+    return userPerms.includes(tabName);
+  };
 
   // Akses rahasia CMS dan routing halaman hukum (SPA)
   useEffect(() => {
@@ -401,66 +461,6 @@ export default function App() {
     };
   }, [currentUser, authPage]);
 
-  const hasPermission = (tabName) => {
-    if (!currentUser) return false;
-
-    // 0. Global Feature Gating (Hidden features check)
-    const tabToModuleMap = {
-      'pos': 'pos',
-      'history': 'history',
-      'catalog': 'catalog',
-      'variants': 'variants',
-      'customers': 'customers',
-      'stock': 'stock',
-      'discounts': 'discounts',
-      'expenses': 'expenses',
-      'reports': 'reports',
-      'employees': 'staff',
-      'outlets': 'outlets',
-      'shifts': 'shifts',
-      'ppob-history': 'ppob',
-      'ppob-topup': 'ppob',
-      'ppob-withdraw': 'ppob'
-    };
-    const requiredModule = tabToModuleMap[tabName];
-    if (requiredModule && platformSettings?.pos_features?.[requiredModule]?.status === 'hidden') {
-      return false;
-    }
-
-    // 1. SaaS Gating Check (berlaku untuk Owner dan Admin)
-    const baseTabs = ['dashboard', 'settings'];
-    if (!baseTabs.includes(tabName)) {
-      const enabledModules = Array.isArray(currentUser.enabled_modules) ? currentUser.enabled_modules : [];
-      const tabToModuleMap = {
-        'pos': 'pos',
-        'history': 'history',
-        'catalog': 'catalog',
-        'variants': 'variants',
-        'customers': 'customers',
-        'stock': 'stock',
-        'discounts': 'discounts',
-        'expenses': 'expenses',
-        'reports': 'reports',
-        'employees': 'staff',
-        'outlets': 'outlets',
-        'shifts': 'shifts',
-        'ppob-history': 'ppob',
-        'ppob-topup': 'ppob',
-        'ppob-withdraw': 'ppob'
-      };
-      const requiredModule = tabToModuleMap[tabName];
-      if (requiredModule && !enabledModules.includes('all') && !enabledModules.includes(requiredModule)) {
-        return false;
-      }
-    }
-
-    // 2. Role-Based Access Control (RBAC)
-    if (currentUser.role === 'Owner' || currentUser.role === 'Admin') return true;
-    const userPerms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
-    if (['dashboard', 'settings', 'ppob-history', 'ppob-topup', 'ppob-withdraw'].includes(tabName)) return true;
-    if (tabName === 'employees') return userPerms.includes('settings');
-    return userPerms.includes(tabName);
-  };
 
   useEffect(() => {
     if (currentUser && activeTab !== 'dashboard' && !hasPermission(activeTab)) {

@@ -35,6 +35,27 @@ const xenditAuthHeader = {
 
 const XENDIT_KEY = process.env.XENDIT_SECRET_KEY;
 
+// Duitku Config
+const DUITKU_MERCHANT_CODE = process.env.DUITKU_MERCHANT_CODE || '';
+const DUITKU_API_KEY = process.env.DUITKU_API_KEY || '';
+const DUITKU_IS_SANDBOX = process.env.DUITKU_IS_SANDBOX !== 'false';
+
+// Tripay Config
+const TRIPAY_MERCHANT_CODE = process.env.TRIPAY_MERCHANT_CODE || '';
+const TRIPAY_API_KEY = process.env.TRIPAY_API_KEY || '';
+const TRIPAY_PRIVATE_KEY = process.env.TRIPAY_PRIVATE_KEY || '';
+const TRIPAY_IS_SANDBOX = process.env.TRIPAY_IS_SANDBOX !== 'false';
+
+// iPaymu Config
+const IPAYMU_VA = process.env.IPAYMU_VA || '';
+const IPAYMU_API_KEY = process.env.IPAYMU_API_KEY || '';
+const IPAYMU_IS_SANDBOX = process.env.IPAYMU_IS_SANDBOX !== 'false';
+
+function md5(str) {
+  return crypto.createHash('md5').update(str).digest('hex');
+}
+
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'agrapos-backend' });
 });
@@ -872,9 +893,254 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
           billing = newBilling;
         }
 
-        // Sekarang generate Xendit Payment baru (karena user mungkin ganti metode pembayaran atau bank)
+        // Sekarang generate Duitku / Xendit Payment baru
         const referenceId = `BILL-${billing.id}`;
         const planPrice = billing.amount;
+        const cleanHostUrl = `${req.protocol}://${req.get('host')}`;
+
+        if (IPAYMU_VA && IPAYMU_API_KEY) {
+          const paymentAmount = Number(planPrice);
+          
+          let paymentMethodCode = '';
+          let paymentChannelCode = '';
+          if (method === 'QRIS') {
+            paymentMethodCode = 'qris';
+            paymentChannelCode = 'qris';
+          } else if (method === 'VA') {
+            paymentMethodCode = 'va';
+            paymentChannelCode = bankCode.toLowerCase();
+          }
+
+          const notifyUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/ipaymu/callback`;
+          const returnUrl = `${cleanHostUrl.replace(/\/$/, '')}/dashboard`;
+          const cancelUrl = `${cleanHostUrl.replace(/\/$/, '')}/`;
+
+          const ipaymuPayload = {
+            name: namaOwner || 'AGRAPos User',
+            phone: nomorHp || '081234567890',
+            email: email || 'user@agrapos.id',
+            amount: paymentAmount,
+            notifyUrl: notifyUrl,
+            returnUrl: returnUrl,
+            cancelUrl: cancelUrl,
+            referenceId: referenceId,
+            paymentMethod: paymentMethodCode,
+            paymentChannel: paymentChannelCode
+          };
+
+          const bodyJson = JSON.stringify(ipaymuPayload);
+          const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
+          const stringToSign = `POST:${IPAYMU_VA}:${bodyHash}:${IPAYMU_API_KEY}`;
+          const signature = crypto.createHmac('sha256', IPAYMU_API_KEY).update(stringToSign).digest('hex');
+
+          const now = new Date();
+          const timestamp = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0') +
+            String(now.getHours()).padStart(2, '0') +
+            String(now.getMinutes()).padStart(2, '0') +
+            String(now.getSeconds()).padStart(2, '0');
+
+          const response = await axios.post(
+            IPAYMU_IS_SANDBOX 
+              ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
+              : 'https://my.ipaymu.com/api/v2/payment/direct',
+            ipaymuPayload,
+            {
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'va': IPAYMU_VA,
+                'signature': signature,
+                'timestamp': timestamp
+              }
+            }
+          );
+
+          if (!response.data || response.data.Status !== 200) {
+            return res.status(500).json({ error: `iPaymu Inquiry Gagal: ${response.data?.Message || 'Unknown error'}` });
+          }
+
+          const ipaymuData = response.data.Data;
+
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: String(ipaymuData.TransactionId),
+            payment_method: method
+          }).eq('id', billing.id);
+
+          if (method === 'QRIS') {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                qrString: ipaymuData.QrString || ipaymuData.Url || '',
+                paymentId: String(ipaymuData.TransactionId),
+                referenceId
+              }
+            });
+          } else {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                accountNumber: ipaymuData.PaymentNo || '',
+                bankCode: bankCode.toUpperCase(),
+                paymentId: String(ipaymuData.TransactionId),
+                referenceId
+              }
+            });
+          }
+        }
+
+        if (TRIPAY_API_KEY && TRIPAY_MERCHANT_CODE && TRIPAY_PRIVATE_KEY) {
+          const paymentAmount = Number(planPrice);
+          const signature = crypto
+            .createHmac('sha256', TRIPAY_PRIVATE_KEY)
+            .update(TRIPAY_MERCHANT_CODE + referenceId + paymentAmount)
+            .digest('hex');
+
+          let paymentMethodCode = '';
+          if (method === 'QRIS') {
+            paymentMethodCode = 'QRIS';
+          } else if (method === 'VA') {
+            const bankMap = { 'BCA': 'BCAVA', 'MANDIRI': 'MANDIRIVA', 'BRI': 'BRIVA', 'BNI': 'BNIVA' };
+            paymentMethodCode = bankMap[bankCode.toUpperCase()] || 'BRIVA';
+          }
+
+          const callbackUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/tripay/callback`;
+
+          const tripayPayload = {
+            method: paymentMethodCode,
+            merchant_ref: referenceId,
+            amount: paymentAmount,
+            customer_name: namaOwner,
+            customer_email: email,
+            customer_phone: nomorHp,
+            order_items: [
+              {
+                sku: planId,
+                name: `Langganan AGRAPos - ${planId.toUpperCase()}`,
+                price: paymentAmount,
+                quantity: 1
+              }
+            ],
+            callback_url: callbackUrl,
+            expired_time: Math.floor(Date.now() / 1000) + 24 * 3600
+          };
+
+          const response = await axios.post(
+            TRIPAY_IS_SANDBOX
+              ? 'https://tripay.co.id/api-sandbox/transaction/create'
+              : 'https://tripay.co.id/api/transaction/create',
+            tripayPayload,
+            {
+              headers: {
+                Authorization: `Bearer ${TRIPAY_API_KEY}`
+              }
+            }
+          );
+
+          if (!response.data || !response.data.success) {
+            return res.status(500).json({ error: `Tripay Inquiry Gagal: ${response.data.message || 'Unknown error'}` });
+          }
+
+          const tripayData = response.data.data;
+
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: tripayData.reference,
+            payment_method: method
+          }).eq('id', billing.id);
+
+          if (method === 'QRIS') {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                qrString: tripayData.qr_string || tripayData.qr_url || '',
+                paymentId: tripayData.reference,
+                referenceId
+              }
+            });
+          } else {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                accountNumber: tripayData.pay_code || '',
+                bankCode: bankCode.toUpperCase(),
+                paymentId: tripayData.reference,
+                referenceId
+              }
+            });
+          }
+        }
+
+        if (DUITKU_MERCHANT_CODE && DUITKU_API_KEY) {
+          const paymentAmount = Number(planPrice);
+          const signature = md5(DUITKU_MERCHANT_CODE + referenceId + paymentAmount + DUITKU_API_KEY);
+          
+          let paymentMethodCode = '';
+          if (method === 'QRIS') {
+            paymentMethodCode = 'DQ';
+          } else if (method === 'VA') {
+            const bankMap = { 'BCA': 'BC', 'MANDIRI': 'M2', 'BRI': 'BR', 'BNI': 'B1' };
+            paymentMethodCode = bankMap[bankCode.toUpperCase()] || 'VC';
+          }
+
+          const callbackUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/duitku/callback`;
+          const returnUrl = `${cleanHostUrl.replace(/\/$/, '')}/dashboard`;
+
+          const response = await axios.post(
+            DUITKU_IS_SANDBOX 
+              ? 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry'
+              : 'https://passport.duitku.com/webapi/api/merchant/v2/inquiry',
+            {
+              merchantCode: DUITKU_MERCHANT_CODE,
+              paymentAmount: paymentAmount,
+              paymentMethod: paymentMethodCode,
+              merchantOrderId: referenceId,
+              productDetails: `Langganan AGRAPos - ${planId.toUpperCase()}`,
+              email: email,
+              phoneNumber: nomorHp,
+              signature: signature,
+              callbackUrl: callbackUrl,
+              returnUrl: returnUrl,
+              expiryPeriod: 1440
+            }
+          );
+
+          if (response.data.statusCode !== '00') {
+            return res.status(500).json({ error: `Duitku Inquiry Gagal: ${response.data.statusMessage || 'Unknown error'}` });
+          }
+
+          await supabase.from('tenant_billing').update({
+            xendit_invoice_id: response.data.reference,
+            payment_method: method
+          }).eq('id', billing.id);
+
+          if (method === 'QRIS') {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                qrString: response.data.qrContent || response.data.qrCode || response.data.paymentUrl || '',
+                paymentId: response.data.reference,
+                referenceId
+              }
+            });
+          } else {
+            return res.status(200).json({
+              success: true,
+              billingId: billing.id,
+              paymentData: {
+                accountNumber: response.data.vaNumber || '',
+                bankCode: bankCode.toUpperCase(),
+                paymentId: response.data.reference,
+                referenceId
+              }
+            });
+          }
+        }
 
         if (method === 'QRIS') {
           const headers = {
@@ -1059,8 +1325,253 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
       // We don't need to delete user here because they got registered in free plan
     }
 
-    // 8. Generate Xendit Payment
+    // 8. Generate Payment (Duitku / Xendit)
     const referenceId = `BILL-${billing.id}`;
+    const cleanHostUrl = `${req.protocol}://${req.get('host')}`;
+
+    if (IPAYMU_VA && IPAYMU_API_KEY) {
+      const paymentAmount = Number(planPrice);
+      
+      let paymentMethodCode = '';
+      let paymentChannelCode = '';
+      if (method === 'QRIS') {
+        paymentMethodCode = 'qris';
+        paymentChannelCode = 'qris';
+      } else if (method === 'VA') {
+        paymentMethodCode = 'va';
+        paymentChannelCode = bankCode.toLowerCase();
+      }
+
+      const notifyUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/ipaymu/callback`;
+      const returnUrl = `${cleanHostUrl.replace(/\/$/, '')}/dashboard`;
+      const cancelUrl = `${cleanHostUrl.replace(/\/$/, '')}/`;
+
+      const ipaymuPayload = {
+        name: namaOwner || 'AGRAPos User',
+        phone: nomorHp || '081234567890',
+        email: email || 'user@agrapos.id',
+        amount: paymentAmount,
+        notifyUrl: notifyUrl,
+        returnUrl: returnUrl,
+        cancelUrl: cancelUrl,
+        referenceId: referenceId,
+        paymentMethod: paymentMethodCode,
+        paymentChannel: paymentChannelCode
+      };
+
+      const bodyJson = JSON.stringify(ipaymuPayload);
+      const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
+      const stringToSign = `POST:${IPAYMU_VA}:${bodyHash}:${IPAYMU_API_KEY}`;
+      const signature = crypto.createHmac('sha256', IPAYMU_API_KEY).update(stringToSign).digest('hex');
+
+      const now = new Date();
+      const timestamp = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+
+      const response = await axios.post(
+        IPAYMU_IS_SANDBOX 
+          ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
+          : 'https://my.ipaymu.com/api/v2/payment/direct',
+        ipaymuPayload,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'va': IPAYMU_VA,
+            'signature': signature,
+            'timestamp': timestamp
+          }
+        }
+      );
+
+      if (!response.data || response.data.Status !== 200) {
+        return res.status(500).json({ error: `iPaymu Inquiry Gagal: ${response.data?.Message || 'Unknown error'}` });
+      }
+
+      const ipaymuData = response.data.Data;
+
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: String(ipaymuData.TransactionId),
+        payment_method: method
+      }).eq('id', billing.id);
+
+      if (method === 'QRIS') {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            qrString: ipaymuData.QrString || ipaymuData.Url || '',
+            paymentId: String(ipaymuData.TransactionId),
+            referenceId
+          }
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            accountNumber: ipaymuData.PaymentNo || '',
+            bankCode: bankCode.toUpperCase(),
+            paymentId: String(ipaymuData.TransactionId),
+            referenceId
+          }
+        });
+      }
+    }
+
+    if (TRIPAY_API_KEY && TRIPAY_MERCHANT_CODE && TRIPAY_PRIVATE_KEY) {
+      const paymentAmount = Number(planPrice);
+      const signature = crypto
+        .createHmac('sha256', TRIPAY_PRIVATE_KEY)
+        .update(TRIPAY_MERCHANT_CODE + referenceId + paymentAmount)
+        .digest('hex');
+
+      let paymentMethodCode = '';
+      if (method === 'QRIS') {
+        paymentMethodCode = 'QRIS';
+      } else if (method === 'VA') {
+        const bankMap = { 'BCA': 'BCAVA', 'MANDIRI': 'MANDIRIVA', 'BRI': 'BRIVA', 'BNI': 'BNIVA' };
+        paymentMethodCode = bankMap[bankCode.toUpperCase()] || 'BRIVA';
+      }
+
+      const callbackUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/tripay/callback`;
+
+      const tripayPayload = {
+        method: paymentMethodCode,
+        merchant_ref: referenceId,
+        amount: paymentAmount,
+        customer_name: namaOwner,
+        customer_email: email,
+        customer_phone: nomorHp,
+        order_items: [
+          {
+            sku: planId,
+            name: `Langganan AGRAPos - ${planId.toUpperCase()}`,
+            price: paymentAmount,
+            quantity: 1
+          }
+        ],
+        callback_url: callbackUrl,
+        expired_time: Math.floor(Date.now() / 1000) + 24 * 3600
+      };
+
+      const response = await axios.post(
+        TRIPAY_IS_SANDBOX
+          ? 'https://tripay.co.id/api-sandbox/transaction/create'
+          : 'https://tripay.co.id/api/transaction/create',
+        tripayPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${TRIPAY_API_KEY}`
+          }
+        }
+      );
+
+      if (!response.data || !response.data.success) {
+        return res.status(500).json({ error: `Tripay Inquiry Gagal: ${response.data.message || 'Unknown error'}` });
+      }
+
+      const tripayData = response.data.data;
+
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: tripayData.reference,
+        payment_method: method
+      }).eq('id', billing.id);
+
+      if (method === 'QRIS') {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            qrString: tripayData.qr_string || tripayData.qr_url || '',
+            paymentId: tripayData.reference,
+            referenceId
+          }
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            accountNumber: tripayData.pay_code || '',
+            bankCode: bankCode.toUpperCase(),
+            paymentId: tripayData.reference,
+            referenceId
+          }
+        });
+      }
+    }
+
+    if (DUITKU_MERCHANT_CODE && DUITKU_API_KEY) {
+      const paymentAmount = Number(planPrice);
+      const signature = md5(DUITKU_MERCHANT_CODE + referenceId + paymentAmount + DUITKU_API_KEY);
+      
+      let paymentMethodCode = '';
+      if (method === 'QRIS') {
+        paymentMethodCode = 'DQ';
+      } else if (method === 'VA') {
+        const bankMap = { 'BCA': 'BC', 'MANDIRI': 'M2', 'BRI': 'BR', 'BNI': 'B1' };
+        paymentMethodCode = bankMap[bankCode.toUpperCase()] || 'VC';
+      }
+
+      const callbackUrl = `${cleanHostUrl.replace(/\/$/, '')}/api/duitku/callback`;
+      const returnUrl = `${cleanHostUrl.replace(/\/$/, '')}/dashboard`;
+
+      const response = await axios.post(
+        DUITKU_IS_SANDBOX 
+          ? 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry'
+          : 'https://passport.duitku.com/webapi/api/merchant/v2/inquiry',
+        {
+          merchantCode: DUITKU_MERCHANT_CODE,
+          paymentAmount: paymentAmount,
+          paymentMethod: paymentMethodCode,
+          merchantOrderId: referenceId,
+          productDetails: `Langganan AGRAPos - ${planId.toUpperCase()}`,
+          email: email,
+          phoneNumber: nomorHp,
+          signature: signature,
+          callbackUrl: callbackUrl,
+          returnUrl: returnUrl,
+          expiryPeriod: 1440
+        }
+      );
+
+      if (response.data.statusCode !== '00') {
+        return res.status(500).json({ error: `Duitku Inquiry Gagal: ${response.data.statusMessage || 'Unknown error'}` });
+      }
+
+      await supabase.from('tenant_billing').update({
+        xendit_invoice_id: response.data.reference,
+        payment_method: method
+      }).eq('id', billing.id);
+
+      if (method === 'QRIS') {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            qrString: response.data.qrContent || response.data.qrCode || response.data.paymentUrl || '',
+            paymentId: response.data.reference,
+            referenceId
+          }
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          billingId: billing.id,
+          paymentData: {
+            accountNumber: response.data.vaNumber || '',
+            bankCode: bankCode.toUpperCase(),
+            paymentId: response.data.reference,
+            referenceId
+          }
+        });
+      }
+    }
 
     if (method === 'QRIS') {
       const headers = {
@@ -2230,6 +2741,237 @@ app.post('/api/saas/webhook', async (req, res) => {
   }
 
   return res.status(200).send('OK');
+});
+
+// Duitku Callback Webhook
+app.post('/api/duitku/callback', async (req, res) => {
+  const { merchantCode, amount, merchantOrderId, signature, resultCode, reference } = req.body;
+
+  try {
+    console.log('[Duitku Callback Received]', req.body);
+
+    const expectedSignature = md5(merchantCode + amount + merchantOrderId + DUITKU_API_KEY);
+    if (signature !== expectedSignature) {
+      console.error('[Duitku Callback] Invalid signature');
+      return res.status(400).send('Invalid signature');
+    }
+
+    if (resultCode !== '00') {
+      console.log(`[Duitku Callback] Payment failed/pending with code: ${resultCode}`);
+      return res.status(200).send('OK');
+    }
+
+    if (merchantOrderId && merchantOrderId.startsWith('BILL-')) {
+      const billingId = Number(merchantOrderId.replace('BILL-', ''));
+
+      const { data: billing } = await supabase
+        .from('tenant_billing')
+        .select('*')
+        .eq('id', billingId)
+        .maybeSingle();
+
+      if (!billing) {
+        return res.status(404).send('Billing not found');
+      }
+
+      if (billing.status === 'paid') {
+        return res.status(200).send('OK');
+      }
+
+      await supabase.from('tenant_billing').update({
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      }).eq('id', billingId);
+
+      const { data: planData } = await supabase
+        .from('subscription_plans')
+        .select('features')
+        .eq('id', billing.plan_id)
+        .maybeSingle();
+
+      const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      await supabase.from('tenants').update({
+        status: 'active',
+        plan_id: billing.plan_id,
+        subscription_status: 'active',
+        subscription_end_date: endDate.toISOString(),
+        enabled_modules: planFeatures
+      }).eq('tenant_id', billing.tenant_id);
+
+      await supabase.from('tenant_subscriptions').upsert({
+        tenant_id: billing.tenant_id,
+        plan_id: billing.plan_id,
+        status: 'active',
+        current_period_end: endDate.toISOString()
+      });
+
+      console.log(`[Duitku Callback Success] Tenant ${billing.tenant_id} upgraded successfully.`);
+    }
+
+    return res.status(200).send('OK');
+  } catch (err) {
+    console.error('[Duitku Callback Error]', err.message);
+    return res.status(500).send('Internal Server Error');
+  }
+});
+
+// Tripay Callback Webhook
+app.post('/api/tripay/callback', async (req, res) => {
+  const callbackSignature = req.headers['x-callback-signature'];
+  const jsonPayload = req.body;
+
+  try {
+    console.log('[Tripay Callback Received]', jsonPayload);
+
+    const rawBody = JSON.stringify(jsonPayload);
+    const expectedSignature = crypto
+      .createHmac('sha256', TRIPAY_PRIVATE_KEY)
+      .update(rawBody)
+      .digest('hex');
+
+    const isVerified = (callbackSignature === expectedSignature);
+    if (!isVerified) {
+      console.warn('[Tripay Callback Warning] Signature mismatch. expected:', expectedSignature, 'got:', callbackSignature);
+      if (!TRIPAY_IS_SANDBOX) {
+        return res.status(400).send('Invalid signature');
+      }
+    }
+
+    const { status, merchant_ref, reference } = jsonPayload;
+
+    if (status !== 'PAID') {
+      console.log(`[Tripay Callback] Payment status is ${status}, ignoring.`);
+      return res.status(200).json({ success: true });
+    }
+
+    if (merchant_ref && merchant_ref.startsWith('BILL-')) {
+      const billingId = Number(merchant_ref.replace('BILL-', ''));
+
+      const { data: billing } = await supabase
+        .from('tenant_billing')
+        .select('*')
+        .eq('id', billingId)
+        .maybeSingle();
+
+      if (!billing) {
+        return res.status(404).send('Billing not found');
+      }
+
+      if (billing.status === 'paid') {
+        return res.status(200).json({ success: true });
+      }
+
+      await supabase.from('tenant_billing').update({
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      }).eq('id', billingId);
+
+      const { data: planData } = await supabase
+        .from('subscription_plans')
+        .select('features')
+        .eq('id', billing.plan_id)
+        .maybeSingle();
+
+      const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      await supabase.from('tenants').update({
+        status: 'active',
+        plan_id: billing.plan_id,
+        subscription_status: 'active',
+        subscription_end_date: endDate.toISOString(),
+        enabled_modules: planFeatures
+      }).eq('tenant_id', billing.tenant_id);
+
+      await supabase.from('tenant_subscriptions').upsert({
+        tenant_id: billing.tenant_id,
+        plan_id: billing.plan_id,
+        status: 'active',
+        current_period_end: endDate.toISOString()
+      });
+
+      console.log(`[Tripay Callback Success] Tenant ${billing.tenant_id} upgraded successfully.`);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[Tripay Callback Error]', err.message);
+    return res.status(500).send('Internal Server Error');
+  }
+});
+
+// iPaymu Callback Webhook
+app.post('/api/ipaymu/callback', async (req, res) => {
+  const { trx_id, status, referenceId, amount } = req.body;
+
+  try {
+    console.log('[iPaymu Callback Received]', req.body);
+
+    const isSuccess = (status === 'berhasil' || status === 'paid' || status === 'settled');
+    if (!isSuccess) {
+      console.log(`[iPaymu Callback] Status is ${status}, ignoring.`);
+      return res.status(200).send('OK');
+    }
+
+    if (referenceId && referenceId.startsWith('BILL-')) {
+      const billingId = Number(referenceId.replace('BILL-', ''));
+
+      const { data: billing } = await supabase
+        .from('tenant_billing')
+        .select('*')
+        .eq('id', billingId)
+        .maybeSingle();
+
+      if (!billing) {
+        return res.status(404).send('Billing not found');
+      }
+
+      if (billing.status === 'paid') {
+        return res.status(200).send('OK');
+      }
+
+      await supabase.from('tenant_billing').update({
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      }).eq('id', billingId);
+
+      const { data: planData } = await supabase
+        .from('subscription_plans')
+        .select('features')
+        .eq('id', billing.plan_id)
+        .maybeSingle();
+
+      const planFeatures = planData?.features || ['pos', 'history', 'catalog', 'staff', 'settings'];
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      await supabase.from('tenants').update({
+        status: 'active',
+        plan_id: billing.plan_id,
+        subscription_status: 'active',
+        subscription_end_date: endDate.toISOString(),
+        enabled_modules: planFeatures
+      }).eq('tenant_id', billing.tenant_id);
+
+      await supabase.from('tenant_subscriptions').upsert({
+        tenant_id: billing.tenant_id,
+        plan_id: billing.plan_id,
+        status: 'active',
+        current_period_end: endDate.toISOString()
+      });
+
+      console.log(`[iPaymu Callback Success] Tenant ${billing.tenant_id} upgraded successfully.`);
+    }
+
+    return res.status(200).send('OK');
+  } catch (err) {
+    console.error('[iPaymu Callback Error]', err.message);
+    return res.status(500).send('Internal Server Error');
+  }
 });
 
 // ==========================================
