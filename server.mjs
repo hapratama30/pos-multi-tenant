@@ -925,7 +925,11 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
             cancelUrl: cancelUrl,
             referenceId: referenceId,
             paymentMethod: paymentMethodCode,
-            paymentChannel: paymentChannelCode
+            paymentChannel: paymentChannelCode,
+            product: [`Langganan Paket ${planId.toUpperCase()}`],
+            qty: ["1"],
+            price: [String(paymentAmount)],
+            description: [`Langganan AGRAPos - ${planId.toUpperCase()}`]
           };
 
           const bodyJson = JSON.stringify(ipaymuPayload);
@@ -1356,7 +1360,11 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
         cancelUrl: cancelUrl,
         referenceId: referenceId,
         paymentMethod: paymentMethodCode,
-        paymentChannel: paymentChannelCode
+        paymentChannel: paymentChannelCode,
+        product: [`Langganan Paket ${planId.toUpperCase()}`],
+        qty: ["1"],
+        price: [String(paymentAmount)],
+        description: [`Langganan AGRAPos - ${planId.toUpperCase()}`]
       };
 
       const bodyJson = JSON.stringify(ipaymuPayload);
