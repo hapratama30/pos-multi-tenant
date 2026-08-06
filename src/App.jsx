@@ -1269,7 +1269,7 @@ export default function App() {
 
                 <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
                   <label style={{ display: 'block', fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    Metode Pembayaran (Xendit)
+                    Metode Pembayaran (iPaymu)
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <button

@@ -202,7 +202,7 @@ export default function Settings({ tenantId, currentUser, onLogout, outlets = []
     { id: 'business', title: 'Nama Usaha & Toko', desc: 'Ubah nama laundry/toko, alamat, nomor telepon, dan identitas tenant', icon: '🏪' },
     { id: 'staff', title: 'Manajemen Staff', desc: 'Kelola hak akses, tambah kasir baru, atau nonaktifkan akun karyawan', icon: '👥' },
     { id: 'printer', title: 'Setting Printer Thermal', desc: 'Hubungkan printer struk kasir bluetooth, pilih ukuran kertas 58mm / 80mm', icon: '🖨️' },
-    { id: 'payments', title: 'Metode Pembayaran & Xendit', desc: 'Registrasi QRIS mandiri & Virtual Account otomatis via Xendit Gateway', icon: '💳' },
+    { id: 'payments', title: 'Metode Pembayaran & iPaymu', desc: 'Registrasi QRIS mandiri & Virtual Account otomatis via iPaymu Gateway', icon: '💳' },
     { id: 'outlets', title: 'Cabang / Outlet', desc: 'Kelola multi-cabang untuk laporan per lokasi', icon: '🏢' },
     { id: 'shifts', title: 'Shift Kasir', desc: 'Kelola saldo laci, modal, dan rekonsiliasi kas', icon: '💰' },
     { id: 'legal', title: 'Kebijakan Hukum (Legal)', desc: 'Buka dokumen resmi Syarat & Ketentuan, Privasi, dan Refund AGRAPos', icon: '⚖️' }

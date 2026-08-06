@@ -182,7 +182,7 @@ export default function SuperAdminTenants({ showToast }) {
                             <p className="text-[9px] text-slate-400 font-medium">Expired: {formatDate(effectiveEnd)}</p>
                           </>
                         )}
-                        {t.xendit_qris_status === 'Aktif' && <p className="text-[9px] text-emerald-600 font-semibold mt-1">Xendit ✓</p>}
+                        {t.xendit_qris_status === 'Aktif' && <p className="text-[9px] text-emerald-600 font-semibold mt-1">iPaymu ✓</p>}
                       </td>
                       <td className="px-5 py-4 capitalize text-xs font-semibold text-slate-600">{t.business_vertical || 'general'}</td>
                       <td className="px-5 py-4">

@@ -214,7 +214,7 @@ export default function SuperAdminOverview({ showToast, onNavigateTenants }) {
           <div className="grid sm:grid-cols-3 gap-3">
             {[
               { id: 'free', name: 'Free', price: 0, features: '1 outlet · 3 staff · 100 produk' },
-              { id: 'pro', name: 'Pro', price: 99000, features: '3 outlet · 10 staff · Laporan & Xendit' },
+              { id: 'pro', name: 'Pro', price: 99000, features: '3 outlet · 10 staff · Laporan & iPaymu' },
               { id: 'enterprise', name: 'Enterprise', price: 299000, features: 'Unlimited · Semua modul' },
             ].map((plan) => (
               <div key={plan.id} className="rounded-xl border border-slate-100 p-4 bg-slate-50/50 hover:border-teal-200 transition-colors">

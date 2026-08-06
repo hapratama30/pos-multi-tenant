@@ -116,7 +116,7 @@ export default function LegalPage({ type, onNavigateToHome, isLoggedIn }) {
                 <ul className="list-disc pl-5 space-y-2">
                   <li><strong>Informasi Pendaftaran:</strong> Nama pemilik akun (Owner), alamat email, nomor telepon, kata sandi terenkripsi, nama bisnis/toko, dan alamat fisik toko Anda.</li>
                   <li><strong>Data Operasional Bisnis:</strong> Katalog produk, harga barang, jumlah stok, nama karyawan, jadwal shift kasir, pengeluaran operasional, dan data transaksi penjualan harian.</li>
-                  <li><strong>Informasi Transaksi Pembayaran:</strong> Data terkait invoice tagihan langganan, metode pembayaran yang dipilih, dan status pembayaran yang diproses melalui gateway mitra resmi kami (Xendit).</li>
+                  <li><strong>Informasi Transaksi Pembayaran:</strong> Data terkait invoice tagihan langganan, metode pembayaran yang dipilih, dan status pembayaran yang diproses melalui gateway mitra resmi kami (iPaymu).</li>
                 </ul>
               </section>
 
@@ -149,7 +149,7 @@ export default function LegalPage({ type, onNavigateToHome, isLoggedIn }) {
                   4. Pembagian Data Pihak Ketiga
                 </h3>
                 <p>
-                  Kami berkomitmen penuh untuk <strong>tidak pernah menjual, menyewakan, atau memberikan data operasional toko Anda</strong> kepada pihak ketiga untuk kepentingan iklan pemasaran tanpa persetujuan eksplisit Anda. Kami hanya membagikan data kepada mitra fungsional tepercaya (seperti gateway pembayaran Xendit dan provider API notifikasi) guna memproses transaksi yang Anda picu sendiri di dalam aplikasi.
+                  Kami berkomitmen penuh untuk <strong>tidak pernah menjual, menyewakan, atau memberikan data operasional toko Anda</strong> kepada pihak ketiga untuk kepentingan iklan pemasaran tanpa persetujuan eksplisit Anda. Kami hanya membagikan data kepada mitra fungsional tepercaya (seperti gateway pembayaran iPaymu dan provider API notifikasi) guna memproses transaksi yang Anda picu sendiri di dalam aplikasi.
                 </p>
               </section>
             </div>

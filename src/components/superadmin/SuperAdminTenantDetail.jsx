@@ -355,15 +355,15 @@ export default function SuperAdminTenantDetail({ tenant, plans, onClose, onSaved
 
           {tab === 'payment' && (
             <section className="rounded-xl border border-slate-200 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Xendit Payment Gateway</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">iPaymu Payment Gateway</h3>
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 <div><p className="text-slate-400 text-xs">Merchant ID</p><p className="font-mono text-xs font-semibold break-all">{tenant.xendit_merchant_id || 'Belum terdaftar'}</p></div>
                 <div><p className="text-slate-400 text-xs">Status QRIS</p><p className="font-semibold">{tenant.xendit_qris_status}</p></div>
                 <div><p className="text-slate-400 text-xs">Status VA</p><p className="font-semibold">{tenant.xendit_va_status}</p></div>
-                <div><p className="text-slate-400 text-xs">Modul xendit</p><p className="font-semibold">{enabledModules.includes('xendit') ? '✅ Diaktifkan' : '❌ Nonaktif'}</p></div>
+                <div><p className="text-slate-400 text-xs">Modul iPaymu</p><p className="font-semibold">{enabledModules.includes('xendit') ? '✅ Diaktifkan' : '❌ Nonaktif'}</p></div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed pt-2 border-t border-slate-100">
-                Aktifkan modul <strong>xendit</strong> di tab Modul agar tenant bisa mengajukan QRIS/VA. Proses KYC tetap melalui Xendit setelah sub-akun dibuat.
+                Aktifkan modul <strong>ipaymu</strong> di tab Modul agar tenant bisa mengajukan QRIS/VA. Proses KYC tetap melalui iPaymu setelah sub-akun dibuat.
               </p>
             </section>
           )}

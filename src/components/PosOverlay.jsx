@@ -1072,7 +1072,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
           { bank: 'Mandiri', code: '89407' },
           { bank: 'BNI', code: '8810' },
           { bank: 'BRI', code: '26215' }
-        ].map(v => `  - VA ${v.bank} (Xendit): *${v.code}${suffix}*`).join('\n') : '';
+        ].map(v => `  - VA ${v.bank} (iPaymu): *${v.code}${suffix}*`).join('\n') : '';
 
         const manualVAs = vaList.length > 0
           ? vaList.map(v => `  - VA ${v.bank}: *${v.number}* (a/n ${v.name})`).join('\n')
@@ -2432,18 +2432,18 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                             {isVA && vaType === 'dinamis' && (
                               <div className="px-4 pb-3 space-y-2">
                                 {loadingXendit ? (
-                                  <div className="text-center py-6">
-                                    <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Generating VA Xendit...</p>
-                                  </div>
-                                ) : errorXendit ? (
-                                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-semibold text-center rounded-xl">
-                                    {errorXendit}
-                                  </div>
-                                ) : xenditVaNumber ? (
-                                  <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between gap-3 shadow-sm">
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (Xendit)</p>
+                                    <div className="text-center py-6">
+                                      <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Generating VA iPaymu...</p>
+                                    </div>
+                                  ) : errorXendit ? (
+                                    <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-semibold text-center rounded-xl">
+                                      {errorXendit}
+                                    </div>
+                                  ) : xenditVaNumber ? (
+                                    <div className="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between gap-3 shadow-sm">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (iPaymu)</p>
                                       <p className="font-mono font-black text-sm text-slate-900 tracking-wider break-all">{xenditVaNumber}</p>
                                       <p className="text-[8px] text-slate-400 font-bold mt-0.5 truncate">a/n {selectedCustomer?.name || 'AgraPOS Customer'} - {formatRp(totalAkhir)}</p>
                                     </div>

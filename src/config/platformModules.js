@@ -29,7 +29,7 @@ export const ALL_MODULES = [
   { id: 'reports', label: 'Laporan & Analitik', icon: '📊', category: 'finance', minPlan: 'pro', desc: 'Omzet, laba, grafik' },
   { id: 'expenses', label: 'Pengeluaran', icon: '💸', category: 'finance', minPlan: 'pro', desc: 'Catat biaya operasional' },
   { id: 'discounts', label: 'Promo & Diskon', icon: '🎁', category: 'finance', minPlan: 'pro', desc: 'Aturan diskon' },
-  { id: 'xendit', label: 'QRIS & VA Xendit', icon: '📱', category: 'finance', minPlan: 'pro', desc: 'Payment gateway' },
+  { id: 'xendit', label: 'QRIS & VA iPaymu', icon: '📱', category: 'finance', minPlan: 'pro', desc: 'Payment gateway' },
   { id: 'ppob', label: 'Tagihan PPOB', icon: '⚡', category: 'finance', minPlan: 'pro', desc: 'Jual pulsa, PLN, PDAM' },
   { id: 'stock', label: 'Manajemen Stok', icon: '📋', category: 'operations', minPlan: 'pro', desc: 'Gudang & mutasi stok' },
   { id: 'outlets', label: 'Multi Outlet', icon: '🏪', category: 'operations', minPlan: 'pro', desc: 'Cabang & lokasi' },

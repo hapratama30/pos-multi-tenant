@@ -120,7 +120,7 @@ export default function SuperAdminSettings({ showToast }) {
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all">
             <div className="pr-4">
               <h3 className="font-bold text-slate-800 text-sm">Deposit via Otomatis (QRIS / Virtual Account)</h3>
-              <p className="text-xs text-slate-500 mt-1">Mengizinkan Tenant untuk melakukan Top Up saldo menggunakan Payment Gateway Xendit secara otomatis.</p>
+              <p className="text-xs text-slate-500 mt-1">Mengizinkan Tenant untuk melakukan Top Up saldo menggunakan Payment Gateway iPaymu secara otomatis.</p>
             </div>
             <button 
               onClick={() => handleToggle('deposit_qris_enabled')}

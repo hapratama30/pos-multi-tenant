@@ -30,7 +30,7 @@ const EWALLET_LIST = ['GoPay', 'Dana', 'OVO', 'ShopeePay', 'LinkAja', 'Jenius', 
 
 const TABS = [
   { key: 'saklar', label: '⚙️ Channel Aktif', color: 'teal' },
-  { key: 'xendit', label: '⚡ QRIS & VA Xendit', color: 'emerald' },
+  { key: 'xendit', label: '⚡ QRIS & VA iPaymu', color: 'emerald' },
   { key: 'transfer', label: '💳 Transfer Bank', color: 'indigo' },
   { key: 'ewallet', label: '📲 e-Wallet', color: 'purple' },
   { key: 'settlements', label: '💰 Pencairan QRIS & VA', color: 'orange' },
@@ -309,9 +309,9 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
             })
             .catch(err => {
               if (err.message === 'Failed to fetch') {
-                console.warn('Gagal sinkronisasi status akun Xendit: Server backend (port 5000) offline.');
+                console.warn('Gagal sinkronisasi status akun iPaymu: Server backend (port 5000) offline.');
               } else {
-                console.error('Gagal sinkronisasi status akun Xendit:', err);
+                console.error('Gagal sinkronisasi status akun iPaymu:', err);
               }
             });
         }
@@ -479,11 +479,11 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setXenditVaStatus('Diproses');
       setXenditQrisStatus('Diproses');
       setActivationUrl(result.activationUrl || '');
-      setMsg({ type: 'success', text: result.message || 'Sub-akun Xendit berhasil dibuat!' });
+      setMsg({ type: 'success', text: result.message || 'Sub-akun iPaymu berhasil dibuat!' });
     } catch (err) {
       const errMsg = err.message === 'Failed to fetch'
         ? 'Gagal mendaftarkan akun: Server backend (port 5000) tidak aktif. Pastikan backend server Anda sudah berjalan.'
-        : (err.message || 'Gagal mendaftarkan akun Xendit.');
+        : (err.message || 'Gagal mendaftarkan akun iPaymu.');
       setMsg({ type: 'error', text: errMsg });
     } finally {
       setSaving(false);
@@ -511,7 +511,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setXenditAccountId(trimmedId);
       setXenditVaStatus('Diproses');
       setXenditQrisStatus('Diproses');
-      setMsg({ type: 'success', text: `Berhasil menghubungkan Xendit Account ID: ${trimmedId}!` });
+      setMsg({ type: 'success', text: `Berhasil menghubungkan iPaymu Account ID: ${trimmedId}!` });
       setManualAccountId('');
     } catch (err) {
       setMsg({ type: 'error', text: err.message || 'Gagal menghubungkan Account ID.' });
@@ -524,7 +524,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
     const isLinkedOnly = xenditVaStatus !== 'Aktif';
     const confirmMsg = isLinkedOnly 
       ? 'Apakah Anda yakin ingin membatalkan pendaftaran ini untuk melakukan registrasi ulang?' 
-      : 'Apakah Anda yakin ingin memutuskan hubungan akun Xendit Anda?';
+      : 'Apakah Anda yakin ingin memutuskan hubungan akun iPaymu Anda?';
 
     if (!window.confirm(confirmMsg)) return;
     setSaving(true);
@@ -545,7 +545,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setXenditVaStatus('Belum Terdaftar');
       setXenditQrisStatus('Belum Terdaftar');
       setMethods(prev => ({ ...prev, qris: false, virtual_account: false }));
-      const successText = isLinkedOnly ? 'Pendaftaran berhasil dibatalkan. Anda dapat melakukan pendaftaran ulang sekarang.' : 'Koneksi Xendit berhasil diputuskan.';
+      const successText = isLinkedOnly ? 'Pendaftaran berhasil dibatalkan. Anda dapat melakukan pendaftaran ulang sekarang.' : 'Koneksi iPaymu berhasil diputuskan.';
       setMsg({ type: 'success', text: successText });
     } catch (err) {
       setMsg({ type: 'error', text: err.message || 'Gagal mereset koneksi.' });
@@ -585,7 +585,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   const renderXenditRegistrationForm = () => {
     return (
       <div className="space-y-4 border-t pt-4 border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🚀 Daftarkan Merchant Baru ke Xendit</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🚀 Daftarkan Merchant Baru ke iPaymu</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Usaha / Cabang</label>
@@ -601,16 +601,16 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         <div className="flex gap-3">
           <button type="button" onClick={handleRegisterXenPlatform} disabled={saving}
             className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-            {saving ? '⏳ Menghubungi API Xendit...' : '🚀 Daftarkan Akun Xendit'}
+            {saving ? '⏳ Menghubungi API iPaymu...' : '🚀 Daftarkan Akun iPaymu'}
           </button>
         </div>
 
         {/* HUBUNGKAN ID MANUAL */}
         <div className="border-t border-dashed pt-4 border-slate-200 mt-2 space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🔗 ATAU Hubungkan Xendit Sub-Account ID yang Sudah Ada</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🔗 ATAU Hubungkan iPaymu Sub-Account ID yang Sudah Ada</p>
           <div className="flex flex-col sm:flex-row gap-3 items-end">
             <div className="flex-1 space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Xendit Sub-Account ID (Mulai dengan '6a...')</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu Sub-Account ID</label>
               <input type="text" value={manualAccountId} onChange={e => setManualAccountId(e.target.value)}
                 placeholder="Contoh: 6afd31abd487c64364c0c5e8" className="pay-input" />
             </div>
@@ -693,7 +693,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
             <div className={`bg-white p-4 rounded-[2rem] border shadow-sm flex items-center gap-3 ${xenditQrisStatus === 'Aktif' ? 'border-emerald-200' : 'border-slate-200/60'}`}>
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border shrink-0 ${xenditQrisStatus === 'Aktif' ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>📱</div>
               <div>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">QRIS Xendit</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">QRIS iPaymu</span>
                 <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border mt-0.5 inline-block ${xenditQrisStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                   {xenditQrisStatus}
                 </span>
@@ -776,7 +776,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
             <div className="space-y-2.5">
               {[
                 { key: 'cash', icon: '💵', label: 'Uang Tunai (Cash)', desc: 'Kasir input & hitung kembalian manual' },
-                { key: 'qris', icon: '📱', label: 'QRIS (via Xendit)', desc: 'QR Code otomatis — konfigurasi di tab QRIS', badge: xenditQrisStatus, isPremium: true },
+                { key: 'qris', icon: '📱', label: 'QRIS (via iPaymu)', desc: 'QR Code otomatis — konfigurasi di tab QRIS', badge: xenditQrisStatus, isPremium: true },
                 { key: 'virtual_account', icon: '🏦', label: 'Virtual Account', desc: `Transfer ke nomor VA — ${vaNumbers.length} VA dikonfigurasi`, badge: xenditVaStatus, isPremium: true },
                 { key: 'transfer_bank', icon: '💳', label: 'Transfer Bank Manual', desc: `Rekening biasa — ${transferBanks.length} rekening dikonfigurasi` },
                 { key: 'ewallet', icon: '📲', label: 'e-Wallet (GoPay / Dana / OVO dll.)', desc: `${ewalletNumbers.length} nomor dikonfigurasi` },
@@ -823,7 +823,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                           setAlertModal({
                             show: true,
                             title: '⚠️ QRIS Belum Aktif',
-                            message: 'Status integrasi QRIS Xendit Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi QRIS iPaymu Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA iPaymu" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;
@@ -833,7 +833,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                           setAlertModal({
                             show: true,
                             title: '⚠️ Virtual Account Belum Aktif',
-                            message: 'Status integrasi Virtual Account Xendit Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA Xendit" sebelum mengaktifkan channel kasir ini.',
+                            message: 'Status integrasi Virtual Account iPaymu Anda belum AKTIF atau sedang DIPROSES. Silakan lakukan pendaftaran terlebih dahulu di tab "⚡ QRIS & VA iPaymu" sebelum mengaktifkan channel kasir ini.',
                             type: 'error'
                           });
                           return;
@@ -865,7 +865,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div>
-                  <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Xendit Account ID</span>
+                  <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">iPaymu Account ID</span>
                   <span className="font-mono text-xs font-black text-slate-700 break-all">{xenditAccountId || '— BELUM TERDAFTAR —'}</span>
                 </div>
                 <div>
@@ -873,7 +873,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                   <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditQrisStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{xenditQrisStatus}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Status VA Xendit</span>
+                  <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Status VA iPaymu</span>
                   <span className={`text-[9px] px-2 py-0.5 font-black uppercase rounded-lg border inline-block ${xenditVaStatus === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{xenditVaStatus}</span>
                 </div>
               </div>
@@ -892,7 +892,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                   </p>
                   {activationUrl ? (
                     <div className="bg-white p-3 rounded-xl border border-orange-200">
-                      <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Link KYC Xendit:</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Link KYC iPaymu:</span>
                       <a href={activationUrl} target="_blank" rel="noreferrer"
                         className="text-xs font-mono font-bold text-teal-600 hover:underline break-all">
                         {activationUrl}
