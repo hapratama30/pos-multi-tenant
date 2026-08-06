@@ -818,7 +818,10 @@ app.post('/api/saas/register-paid-subscription', async (req, res) => {
     });
   } catch (error) {
     console.error('Subscription signup error:', error.message);
-    return res.status(500).json({ error: 'Terjadi kesalahan sistem saat mendaftarkan langganan.' });
+    if (error.response?.data) {
+      console.error('Subscription signup error data:', error.response.data);
+    }
+    return res.status(500).json({ error: error.message || 'Terjadi kesalahan sistem saat mendaftarkan langganan.' });
   }
 });
 
@@ -1650,6 +1653,9 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
 
   } catch (error) {
     console.error('Subscription pending signup error:', error.message);
+    if (error.response?.data) {
+      console.error('Subscription pending signup error data:', error.response.data);
+    }
     return res.status(500).json({ error: error.message || 'Terjadi kesalahan sistem saat mendaftarkan langganan.' });
   }
 });
