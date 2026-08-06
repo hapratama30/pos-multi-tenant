@@ -11,6 +11,7 @@ dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -899,7 +900,7 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
         // Sekarang generate Duitku / Xendit Payment baru
         const referenceId = `BILL-${billing.id}`;
         const planPrice = billing.amount;
-        const cleanHostUrl = `${req.protocol}://${req.get('host')}`;
+        const cleanHostUrl = `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
 
         if (IPAYMU_VA && IPAYMU_API_KEY) {
           const paymentAmount = Number(planPrice);
@@ -1334,7 +1335,7 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
 
     // 8. Generate Payment (Duitku / Xendit)
     const referenceId = `BILL-${billing.id}`;
-    const cleanHostUrl = `${req.protocol}://${req.get('host')}`;
+    const cleanHostUrl = `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
 
     if (IPAYMU_VA && IPAYMU_API_KEY) {
       const paymentAmount = Number(planPrice);
