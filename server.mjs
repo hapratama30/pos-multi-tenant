@@ -779,37 +779,7 @@ app.post('/api/saas/register-paid-subscription', async (req, res) => {
       status: 'active'
     });
 
-    // Populate some demo products (coffee shop theme) so their new store has products right away!
-    try {
-      const { data: mainOutlet } = await supabase
-        .from('outlets')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('is_main', true)
-        .maybeSingle();
 
-      const outletId = mainOutlet?.id || null;
-
-      // Insert categories
-      const categories = [
-        { tenant_id: tenantId, name: 'Kopi & Latte', type: 'ritel', code: 'KOPI' },
-        { tenant_id: tenantId, name: 'Non-Kopi', type: 'ritel', code: 'NONKOPI' },
-        { tenant_id: tenantId, name: 'Cemilan', type: 'ritel', code: 'CEMILAN' }
-      ];
-      await supabase.from('product_categories').insert(categories);
-
-      // Insert products
-      const demoProducts = [
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Es Kopi Susu Gula Aren', price: 22000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Caffe Latte Art', price: 28000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Matcha Latte Premium', price: 26000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Chocolate Signature', price: 25000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Butter Croissant', price: 18000, category: 'Cemilan', unit: 'Pcs', is_active: true }
-      ];
-      await supabase.from('products').insert(demoProducts);
-    } catch (populateError) {
-      console.warn('Failed to populate initial demo products:', populateError.message);
-    }
 
     return res.status(200).json({
       success: true,
@@ -1277,35 +1247,7 @@ app.post('/api/saas/register-pending-subscription', async (req, res) => {
       status: 'active'
     });
 
-    // Populate demo products
-    try {
-      const { data: mainOutlet } = await supabase
-        .from('outlets')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('is_main', true)
-        .maybeSingle();
 
-      const outletId = mainOutlet?.id || null;
-
-      const categories = [
-        { tenant_id: tenantId, name: 'Kopi & Latte', type: 'ritel', code: 'KOPI' },
-        { tenant_id: tenantId, name: 'Non-Kopi', type: 'ritel', code: 'NONKOPI' },
-        { tenant_id: tenantId, name: 'Cemilan', type: 'ritel', code: 'CEMILAN' }
-      ];
-      await supabase.from('product_categories').insert(categories);
-
-      const demoProducts = [
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Es Kopi Susu Gula Aren', price: 22000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Caffe Latte Art', price: 28000, category: 'Kopi & Latte', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Matcha Latte Premium', price: 26000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Chocolate Signature', price: 25000, category: 'Non-Kopi', unit: 'Cup', is_active: true },
-        { tenant_id: tenantId, outlet_id: outletId, name: 'Butter Croissant', price: 18000, category: 'Cemilan', unit: 'Pcs', is_active: true }
-      ];
-      await supabase.from('products').insert(demoProducts);
-    } catch (populateError) {
-      console.warn('Failed to populate initial demo products:', populateError.message);
-    }
 
     // 6. Fetch Plan price
     const { data: planData } = await supabase
