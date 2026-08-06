@@ -2354,8 +2354,18 @@ app.post('/api/xendit/static-qr', async (req, res) => {
 
     if (dbError) throw dbError;
     const settings = settingsList?.[0];
+    const rawId = settings?.xendit_merchant_id || '';
 
-    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
+    if (rawId.startsWith('IPAYMU|')) {
+      const parts = rawId.split('|');
+      const tenantVa = parts[1] || '';
+      return res.status(200).json({
+        success: true,
+        qrString: `https://ipaymu.com/qr/${tenantVa}`,
+      });
+    }
+
+    const xenditMerchantId = rawId.split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       return res.status(200).json({
@@ -2435,7 +2445,18 @@ app.post('/api/xendit/fixed-vas', async (req, res) => {
 
     if (dbError) throw dbError;
     const settings = settingsList?.[0];
-    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
+    const rawId = settings?.xendit_merchant_id || '';
+
+    if (rawId.startsWith('IPAYMU|')) {
+      const parts = rawId.split('|');
+      const tenantVa = parts[1] || '';
+      const ipaymuVas = [
+        { bank_code: 'IPAYMU', account_number: tenantVa, name: 'iPaymu Virtual Account' }
+      ];
+      return res.status(200).json({ success: true, vas: ipaymuVas });
+    }
+
+    const xenditMerchantId = rawId.split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       const suffix = String(tenantId).replace(/\D/g, '').substring(0, 7) || '1234567';
