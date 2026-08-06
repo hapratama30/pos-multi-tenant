@@ -2921,7 +2921,8 @@ app.post('/api/tripay/callback', async (req, res) => {
 
 // iPaymu Callback Webhook
 app.post('/api/ipaymu/callback', async (req, res) => {
-  const { trx_id, status, referenceId, amount } = req.body;
+  const { trx_id, status, amount } = req.body;
+  const refId = req.body.reference_id || req.body.referenceId || req.body.sid || req.body.reference;
 
   try {
     console.log('[iPaymu Callback Received]', req.body);
@@ -2932,8 +2933,8 @@ app.post('/api/ipaymu/callback', async (req, res) => {
       return res.status(200).send('OK');
     }
 
-    if (referenceId && referenceId.startsWith('BILL-')) {
-      const billingId = Number(referenceId.replace('BILL-', ''));
+    if (refId && refId.startsWith('BILL-')) {
+      const billingId = Number(refId.replace('BILL-', ''));
 
       const { data: billing } = await supabase
         .from('tenant_billing')
