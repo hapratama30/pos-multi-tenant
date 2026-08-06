@@ -162,8 +162,66 @@ export default function SuperAdminSettings({ showToast }) {
             />
           </div>
 
-          {/* Bisa ditambahkan toggle lain disini */}
-          
+          {/* Bagi Hasil / Split Payment POS (iPaymu) */}
+          <div className="border-t border-slate-200/80 pt-6 mt-6 space-y-4">
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wide flex items-center gap-3">
+              <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">💸</span>
+              Bagi Hasil / Split Payment POS (iPaymu)
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Konfigurasi pembagian dana otomatis untuk transaksi kasir POS yang menggunakan metode pembayaran QRIS/VA iPaymu. Pembayaran dari pelanggan akan diproses menggunakan akun iPaymu Master platform dan secara otomatis dibagi ke Virtual Account masing-masing Tenant dikurangi biaya komisi platform yang ditentukan di bawah ini.
+            </p>
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all">
+              <div className="pr-4">
+                <h3 className="font-bold text-slate-800 text-sm">Aktifkan Split Payment POS</h3>
+                <p className="text-xs text-slate-500 mt-1">Mengizinkan bagi hasil otomatis antara platform developer dengan Tenant.</p>
+              </div>
+              <button 
+                onClick={() => handleToggle('pos_split_payment_enabled')}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${features.pos_split_payment_enabled !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}
+              >
+                <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${features.pos_split_payment_enabled !== false ? 'translate-x-7' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {features.pos_split_payment_enabled !== false && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 flex flex-col gap-2">
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Persentase Komisi Platform (%)</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Potongan persentase dari setiap total transaksi POS (misal: 1.5% atau 5%).</p>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    className="w-full bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Contoh: 1.5"
+                    value={features.pos_commission_percent !== undefined ? features.pos_commission_percent : ''}
+                    onChange={(e) => handleInputChange('pos_commission_percent', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 flex flex-col gap-2">
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">Biaya Flat Komisi Platform (Rp)</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Potongan nominal tetap per transaksi POS (misal: 1000 atau 2000 Rupiah).</p>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Contoh: 1000"
+                    value={features.pos_commission_flat !== undefined ? features.pos_commission_flat : ''}
+                    onChange={(e) => handleInputChange('pos_commission_flat', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="border-t border-slate-200/80 pt-8 mt-8 space-y-6">
             <h3 className="text-base font-black text-slate-800 uppercase tracking-wide flex items-center gap-3">
               <span className="p-2 bg-teal-50 text-teal-600 rounded-xl">🛡️</span>

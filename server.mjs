@@ -97,6 +97,58 @@ app.post('/api/saas/platform-settings', async (req, res) => {
   }
 });
 
+app.post('/api/saas/update-tenant-payment', async (req, res) => {
+  const { pin, tenantId, merchantId, qrisStatus, vaStatus } = req.body;
+  const SUPERADMIN_PIN = process.env.VITE_SUPERADMIN_PIN || '@Hapratama30';
+  if (pin !== SUPERADMIN_PIN) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { data: existing } = await supabase
+      .from('payment_settings')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('payment_settings')
+        .update({
+          xendit_merchant_id: merchantId === '' ? null : merchantId,
+          xendit_qris_status: qrisStatus,
+          xendit_va_status: vaStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_id', tenantId);
+      if (error) throw error;
+    } else {
+      const { data: mainOutlet } = await supabase
+        .from('outlets')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('is_main', true)
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from('payment_settings')
+        .insert({
+          tenant_id: tenantId,
+          outlet_id: mainOutlet?.id || null,
+          xendit_merchant_id: merchantId === '' ? null : merchantId,
+          xendit_qris_status: qrisStatus,
+          xendit_va_status: vaStatus,
+          payment_cash_enabled: true,
+          payment_qris_enabled: false,
+          payment_va_enabled: false
+        });
+      if (error) throw error;
+    }
+
+    return res.json({ success: true, message: 'Payment settings updated successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/xendit/register-tenant', async (req, res) => {
   const { tenantId, outletId, businessName, emailBisnis } = req.body;
 
@@ -360,28 +412,76 @@ app.post('/api/xendit/create-qr', async (req, res) => {
 
     // Direct iPaymu Routing
     if (rawId.startsWith('IPAYMU|')) {
-      const [_, tenantVa, tenantApiKey] = rawId.split('|');
+      const parts = rawId.split('|');
+      const tenantVa = parts[1] || '';
+      const tenantApiKey = parts[2] || '';
       const cleanHostUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
 
+      // Ambil Platform Global Settings untuk cek Split Payment
+      let splitEnabled = false;
+      let commPercent = 0;
+      let commFlat = 0;
+
+      try {
+        const { data: globalSettings } = await supabase
+          .from('platform_settings')
+          .select('feature_flags')
+          .eq('id', 1)
+          .maybeSingle();
+        if (globalSettings?.feature_flags) {
+          splitEnabled = globalSettings.feature_flags.pos_split_payment_enabled !== false;
+          commPercent = Number(globalSettings.feature_flags.pos_commission_percent || 0);
+          commFlat = Number(globalSettings.feature_flags.pos_commission_flat || 0);
+        }
+      } catch (e) {
+        console.error('Error fetching platform settings for split:', e.message);
+      }
+
+      // Tentukan apakah kita menggunakan Split Payment (melalui Master iPaymu)
+      const useSplit = splitEnabled && IPAYMU_VA && IPAYMU_API_KEY && tenantVa;
+
+      const activeVa = useSplit ? IPAYMU_VA : tenantVa;
+      const activeApiKey = useSplit ? IPAYMU_API_KEY : tenantApiKey;
+
+      if (!activeApiKey) {
+        throw new Error('API Key iPaymu tidak dikonfigurasi!');
+      }
+
+      const totalAmount = Number(amount);
       const ipaymuPayload = {
         name: 'AgraPOS Customer',
         email: 'customer@agrapos.dev',
         phone: '081234567890',
-        amount: String(amount),
+        amount: String(totalAmount),
         notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
         paymentMethod: 'qris',
         paymentChannel: 'qris',
         referenceId: `TX-${transactionId}`,
         product: ['Transaksi POS'],
         qty: ['1'],
-        price: [String(amount)],
+        price: [String(totalAmount)],
         description: ['Pembayaran POS AgraPOS']
       };
 
+      // Terapkan bagi hasil (Split) ke VA Tenant jika mode split aktif
+      if (useSplit) {
+        const commission = Math.round((totalAmount * (commPercent / 100)) + commFlat);
+        const tenantAmount = Math.max(0, totalAmount - commission);
+
+        if (tenantAmount > 0) {
+          ipaymuPayload.split_va = [tenantVa];
+          if (commFlat > 0 || commPercent > 0) {
+            ipaymuPayload.split_amount = [String(tenantAmount)];
+          } else {
+            ipaymuPayload.split_percent = [String(100 - commPercent)];
+          }
+        }
+      }
+
       const bodyJson = JSON.stringify(ipaymuPayload);
       const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
-      const stringToSign = `POST:${tenantVa}:${bodyHash}:${tenantApiKey}`;
-      const signature = crypto.createHmac('sha256', tenantApiKey).update(stringToSign).digest('hex');
+      const stringToSign = `POST:${activeVa}:${bodyHash}:${activeApiKey}`;
+      const signature = crypto.createHmac('sha256', activeApiKey).update(stringToSign).digest('hex');
 
       const nowTime = new Date();
       const timestamp = nowTime.getFullYear() +
@@ -391,7 +491,7 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         String(nowTime.getMinutes()).padStart(2, '0') +
         String(nowTime.getSeconds()).padStart(2, '0');
 
-      const isSandbox = tenantApiKey.toUpperCase().includes('SANDBOX');
+      const isSandbox = activeApiKey.toUpperCase().includes('SANDBOX');
       const response = await axios.post(
         isSandbox
           ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
@@ -401,7 +501,7 @@ app.post('/api/xendit/create-qr', async (req, res) => {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'va': tenantVa,
+            'va': activeVa,
             'signature': signature,
             'timestamp': timestamp
           }
@@ -492,29 +592,77 @@ app.post('/api/xendit/create-va', async (req, res) => {
 
     // Direct iPaymu VA Routing
     if (rawId.startsWith('IPAYMU|')) {
-      const [_, tenantVa, tenantApiKey] = rawId.split('|');
+      const parts = rawId.split('|');
+      const tenantVa = parts[1] || '';
+      const tenantApiKey = parts[2] || '';
       const cleanHostUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
       const ipaymuChannel = bankCode.toLowerCase(); // e.g. bca, mandiri, bni, bri
 
+      // Ambil Platform Global Settings untuk cek Split Payment
+      let splitEnabled = false;
+      let commPercent = 0;
+      let commFlat = 0;
+
+      try {
+        const { data: globalSettings } = await supabase
+          .from('platform_settings')
+          .select('feature_flags')
+          .eq('id', 1)
+          .maybeSingle();
+        if (globalSettings?.feature_flags) {
+          splitEnabled = globalSettings.feature_flags.pos_split_payment_enabled !== false;
+          commPercent = Number(globalSettings.feature_flags.pos_commission_percent || 0);
+          commFlat = Number(globalSettings.feature_flags.pos_commission_flat || 0);
+        }
+      } catch (e) {
+        console.error('Error fetching platform settings for split (VA):', e.message);
+      }
+
+      // Tentukan apakah kita menggunakan Split Payment (melalui Master iPaymu)
+      const useSplit = splitEnabled && IPAYMU_VA && IPAYMU_API_KEY && tenantVa;
+
+      const activeVa = useSplit ? IPAYMU_VA : tenantVa;
+      const activeApiKey = useSplit ? IPAYMU_API_KEY : tenantApiKey;
+
+      if (!activeApiKey) {
+        throw new Error('API Key iPaymu tidak dikonfigurasi!');
+      }
+
+      const totalAmount = Number(amount);
       const ipaymuPayload = {
         name: name || 'AgraPOS Customer',
         email: 'customer@agrapos.dev',
         phone: '081234567890',
-        amount: String(amount),
+        amount: String(totalAmount),
         notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
         paymentMethod: 'va',
         paymentChannel: ipaymuChannel,
         referenceId: `TX-${transactionId}`,
         product: ['Transaksi POS'],
         qty: ['1'],
-        price: [String(amount)],
+        price: [String(totalAmount)],
         description: ['Pembayaran VA POS AgraPOS']
       };
 
+      // Terapkan bagi hasil (Split) ke VA Tenant jika mode split aktif
+      if (useSplit) {
+        const commission = Math.round((totalAmount * (commPercent / 100)) + commFlat);
+        const tenantAmount = Math.max(0, totalAmount - commission);
+
+        if (tenantAmount > 0) {
+          ipaymuPayload.split_va = [tenantVa];
+          if (commFlat > 0 || commPercent > 0) {
+            ipaymuPayload.split_amount = [String(tenantAmount)];
+          } else {
+            ipaymuPayload.split_percent = [String(100 - commPercent)];
+          }
+        }
+      }
+
       const bodyJson = JSON.stringify(ipaymuPayload);
       const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
-      const stringToSign = `POST:${tenantVa}:${bodyHash}:${tenantApiKey}`;
-      const signature = crypto.createHmac('sha256', tenantApiKey).update(stringToSign).digest('hex');
+      const stringToSign = `POST:${activeVa}:${bodyHash}:${activeApiKey}`;
+      const signature = crypto.createHmac('sha256', activeApiKey).update(stringToSign).digest('hex');
 
       const nowTime = new Date();
       const timestamp = nowTime.getFullYear() +
@@ -524,7 +672,7 @@ app.post('/api/xendit/create-va', async (req, res) => {
         String(nowTime.getMinutes()).padStart(2, '0') +
         String(nowTime.getSeconds()).padStart(2, '0');
 
-      const isSandbox = tenantApiKey.toUpperCase().includes('SANDBOX');
+      const isSandbox = activeApiKey.toUpperCase().includes('SANDBOX');
       const response = await axios.post(
         isSandbox
           ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
@@ -534,7 +682,7 @@ app.post('/api/xendit/create-va', async (req, res) => {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'va': tenantVa,
+            'va': activeVa,
             'signature': signature,
             'timestamp': timestamp
           }

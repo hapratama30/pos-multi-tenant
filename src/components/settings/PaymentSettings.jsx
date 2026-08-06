@@ -204,6 +204,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   const [manualAccountId, setManualAccountId] = useState('');
   const [ipaymuVaInput, setIpaymuVaInput] = useState('');
   const [ipaymuApiKeyInput, setIpaymuApiKeyInput] = useState('');
+  const [whatsappInput, setWhatsappInput] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -295,8 +296,8 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           accId = parts[1] || '';
           const apiKey = parts[2] || '';
           setXenditAccountId(accId);
-          setXenditVaStatus('Aktif');
-          setXenditQrisStatus('Aktif');
+          setXenditVaStatus(data.xendit_va_status || 'Aktif');
+          setXenditQrisStatus(data.xendit_qris_status || 'Aktif');
           setIpaymuVaInput(accId);
           setIpaymuApiKeyInput(apiKey);
         } else {
@@ -314,7 +315,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
 
         // SINKRONISASI STATUS SECARA REAL-TIME DARI XENDIT JIKA MASIH DIPROSES
         const currentStatus = (data.xendit_qris_status || '').toUpperCase();
-        if (accId && accId !== 'ID-AGRAPOS-BYPASS' && !rawId.startsWith('IPAYMU|') && (currentStatus === 'DIPROSES' || currentStatus === 'BELUM TERDAFTAR')) {
+        if (accId && accId !== 'ID-AGRAPOS-BYPASS' && accId !== 'PENDING_IPAYMU' && !rawId.startsWith('IPAYMU|') && (currentStatus === 'DIPROSES' || currentStatus === 'BELUM TERDAFTAR')) {
           getXenditAccount(accId)
             .then(resData => {
               if (resData.success) {
@@ -339,7 +340,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       // Selalu fetch modules dari tenant untuk mengecek akses QRIS
       const { data: tenantData } = await supabase
         .from('tenants')
-        .select('tenant_name, enabled_modules')
+        .select('tenant_name, enabled_modules, phone')
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
@@ -347,8 +348,26 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         if (!selectedOutletId) {
           setBusinessName(tenantData.tenant_name || '');
         }
+        setWhatsappInput(tenantData.phone || '');
         const modules = tenantData.enabled_modules || [];
         setHasXenditModule(modules.includes('xendit') || modules.includes('all'));
+      }
+
+      // Get the owner staff details to prefill email & whatsapp
+      const { data: ownerData } = await supabase
+        .from('staff')
+        .select('email, phone')
+        .eq('tenant_id', tenantId)
+        .ilike('role', 'owner')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (ownerData) {
+        setEmailBisnis(ownerData.email || '');
+        if (ownerData.phone && (!tenantData || !tenantData.phone)) {
+          setWhatsappInput(ownerData.phone || '');
+        }
       }
 
       if (selectedOutletId) {
@@ -512,8 +531,16 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   // handleSimulateActive removed (simulations cleaned up)
   const handleConnectIpaymu = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (!ipaymuVaInput.trim() || !ipaymuApiKeyInput.trim()) {
-      setMsg({ type: 'error', text: 'Virtual Account dan API Key iPaymu tidak boleh kosong!' });
+    if (!businessName.trim()) {
+      setMsg({ type: 'error', text: 'Nama usaha tidak boleh kosong!' });
+      return;
+    }
+    if (!emailBisnis.trim()) {
+      setMsg({ type: 'error', text: 'Email bisnis tidak boleh kosong!' });
+      return;
+    }
+    if (!whatsappInput.trim()) {
+      setMsg({ type: 'error', text: 'Nomor WhatsApp tidak boleh kosong!' });
       return;
     }
     if (!tenantId) {
@@ -523,22 +550,30 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
     setSaving(true);
     setMsg(null);
     try {
-      const dbValue = `IPAYMU|${ipaymuVaInput.trim()}|${ipaymuApiKeyInput.trim()}`;
+      const dbValue = 'PENDING_IPAYMU';
+      
+      // Upsert payment settings
       await supabase.from('payment_settings').upsert({
         tenant_id: tenantId,
         outlet_id: selectedOutletId,
         xendit_merchant_id: dbValue,
-        xendit_va_status: 'Aktif',
-        xendit_qris_status: 'Aktif',
+        xendit_va_status: 'Diproses',
+        xendit_qris_status: 'Diproses',
         updated_at: new Date().toISOString()
       }, { onConflict: 'tenant_id,outlet_id' });
 
-      setXenditAccountId(ipaymuVaInput.trim());
-      setXenditVaStatus('Aktif');
-      setXenditQrisStatus('Aktif');
-      setMsg({ type: 'success', text: 'Berhasil menghubungkan akun iPaymu Mandiri Anda!' });
+      // Update tenant name and phone number
+      await supabase.from('tenants').update({
+        phone: whatsappInput.trim(),
+        tenant_name: businessName.trim()
+      }).eq('tenant_id', tenantId);
+
+      setXenditAccountId(dbValue);
+      setXenditVaStatus('Diproses');
+      setXenditQrisStatus('Diproses');
+      setMsg({ type: 'success', text: 'Pengajuan aktivasi iPaymu berhasil dikirim! Silakan tunggu 1-2 hari kerja.' });
     } catch (err) {
-      setMsg({ type: 'error', text: err.message || 'Gagal menghubungkan akun iPaymu.' });
+      setMsg({ type: 'error', text: err.message || 'Gagal mengajukan aktivasi iPaymu.' });
     } finally {
       setSaving(false);
     }
@@ -606,26 +641,62 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   // executeSettlement and handleSimulateSettlement removed (simulations cleaned up)
   const renderXenditRegistrationForm = () => {
     return (
-      <div className="space-y-4 border-t pt-4 border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🔌 Hubungkan Kredensial Akun iPaymu Mandiri</p>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu Virtual Account (VA)</label>
-            <input type="text" value={ipaymuVaInput} onChange={e => setIpaymuVaInput(e.target.value)}
-              placeholder="Contoh: 0000005695660902" className="pay-input" required />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu API Key</label>
-            <input type="text" value={ipaymuApiKeyInput} onChange={e => setIpaymuApiKeyInput(e.target.value)}
-              placeholder="Contoh: SANDBOX080FCF54-..." className="pay-input" required />
+      <div className="space-y-6 border-t pt-6 border-slate-100 text-left">
+        <div className="bg-gradient-to-br from-teal-50/50 to-indigo-50/10 p-5 rounded-2xl border border-teal-100/60 space-y-3">
+          <h4 className="text-xs font-black text-teal-800 flex items-center gap-2">
+            ✨ Aktivasi Pembayaran QRIS & Virtual Account iPaymu
+          </h4>
+          <p className="text-[11px] text-teal-900 font-bold leading-relaxed">
+            Terima pembayaran otomatis menggunakan QRIS (Gopay, OVO, ShopeePay, LinkAja, Mobile Banking) dan Virtual Account (BCA, Mandiri, BNI, BRI) di kasir POS Anda secara instan.
+          </p>
+          <div className="bg-white/60 p-3.5 rounded-xl border border-teal-100/50 text-[10px] text-slate-600 font-bold leading-relaxed space-y-1.5">
+            <p>💡 <b>Ketentuan Pendaftaran:</b></p>
+            <p>• Pendaftaran dan aktivasi diproses secara gratis oleh tim AgraPOS.</p>
+            <p>• Proses aktivasi memakan waktu sekitar <b>1-2 hari kerja</b>.</p>
+            <p>• Harap pastikan data outlet dan nomor kontak di bawah ini sudah benar dan aktif.</p>
           </div>
         </div>
-        
-        <div className="flex gap-3 pt-2">
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Outlet / Usaha</label>
+              <input 
+                type="text" 
+                value={businessName} 
+                onChange={e => setBusinessName(e.target.value)}
+                placeholder="Contoh: Roti Bakar Agra" 
+                className="pay-input" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Operasional Toko</label>
+              <input 
+                type="email" 
+                value={emailBisnis} 
+                onChange={e => setEmailBisnis(e.target.value)}
+                placeholder="Contoh: toko@email.com" 
+                className="pay-input" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">No. WhatsApp Aktif</label>
+              <input 
+                type="tel" 
+                value={whatsappInput} 
+                onChange={e => setWhatsappInput(e.target.value)}
+                placeholder="Contoh: 08123456789" 
+                className="pay-input" 
+                required 
+              />
+            </div>
+          </div>
+          
           <button type="button" onClick={handleConnectIpaymu} disabled={saving}
-            className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-            {saving ? '⏳ Menghubungkan...' : '🔌 Hubungkan Akun iPaymu'}
+            className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-2">
+            {saving ? '⏳ Mengirim Pengajuan...' : '🚀 Kirim Pengajuan Aktivasi QRIS & VA'}
           </button>
         </div>
       </div>
@@ -874,7 +945,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div>
                   <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">iPaymu Account ID</span>
-                  <span className="font-mono text-xs font-black text-slate-700 break-all">{xenditAccountId || '— BELUM TERDAFTAR —'}</span>
+                  <span className="font-mono text-xs font-black text-slate-700 break-all">{xenditAccountId === 'PENDING_IPAYMU' ? 'Sedang Diproses' : (xenditAccountId || '— BELUM TERDAFTAR —')}</span>
                 </div>
                 <div>
                   <span className="text-[9px] font-black text-slate-400 block uppercase mb-1">Status QRIS</span>
@@ -889,44 +960,24 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
               {/* Belum Terdaftar → Form Registrasi */}
               {!xenditAccountId && renderXenditRegistrationForm()}
 
-              {/* Diproses → KYC Pending */}
+              {/* Diproses → Menunggu Aktivasi */}
               {xenditAccountId && xenditVaStatus !== 'Aktif' && (
-                <div className="p-5 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-4">
-                  <h4 className="text-xs font-black text-orange-800 uppercase tracking-wider flex items-center gap-2">
-                    ⚠️ Verifikasi KYC Diperlukan
+                <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl space-y-4 text-left">
+                  <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider flex items-center gap-2">
+                    ⏳ Aktivasi QRIS & VA Sedang Diproses
                   </h4>
-                  <p className="text-[11px] text-orange-900 font-medium leading-relaxed">
-                    Pemilik ruko wajib upload Berkas Dokumen Usaha (KYC) agar QRIS & VA disetujui Bank Indonesia.
+                  <p className="text-[11px] text-amber-900 font-medium leading-relaxed font-bold">
+                    Pengajuan Virtual Account dan QRIS Anda sedang diproses oleh Tim Admin kami. Proses verifikasi dan aktivasi merchant biasanya membutuhkan waktu <b>1-2 hari kerja</b> seperti pendaftaran merchant biasa (GoPay / BCA Merchant).
                   </p>
-                  {activationUrl ? (
-                    <div className="bg-white p-3 rounded-xl border border-orange-200">
-                      <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Link KYC iPaymu:</span>
-                      <a href={activationUrl} target="_blank" rel="noreferrer"
-                        className="text-xs font-mono font-bold text-teal-600 hover:underline break-all">
-                        {activationUrl}
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="bg-white p-3.5 rounded-xl border border-orange-200 text-slate-700 text-[10px] font-bold leading-relaxed text-left">
-                      <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">📧 Undangan KYC Terkirim</span>
-                      Xendit telah mengirim email undangan verifikasi ke <span className="font-mono text-orange-700 font-black">{emailBisnis || 'email operasional Anda'}</span>. Silakan periksa folder Inbox/Spam email tersebut untuk menyetujui undangan KYC.
-                    </div>
-                  )}
                   
-                  <div className="bg-white/50 p-3 rounded-xl border border-orange-200/50 text-[10px] text-orange-800 font-bold leading-relaxed">
-                    💡 <b>Tips jika email belum masuk:</b> Jika email undangan tidak masuk dalam beberapa menit, silakan tekan tombol <b>Batal / Daftar Ulang</b> di bawah ini untuk mereset dan mendaftar kembali menggunakan alamat email yang benar.
+                  <div className="bg-white/70 p-3.5 rounded-xl border border-amber-200/50 text-[10px] text-slate-600 font-bold leading-relaxed">
+                    💡 <b>Catatan untuk Admin Toko:</b> Selama masa pemrosesan ini, opsi pembayaran QRIS dan Virtual Account di kasir POS belum dapat diaktifkan. Silakan periksa kembali halaman ini secara berkala.
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    {activationUrl && (
-                      <a href={activationUrl} target="_blank" rel="noreferrer"
-                        className="flex-1 px-4 py-3 bg-orange-500 text-white text-xs font-black uppercase tracking-wider rounded-2xl text-center hover:bg-orange-600 transition-all active:scale-95">
-                        Buka Link Upload KTP & Berkas ❯
-                      </a>
-                    )}
+                  <div className="flex gap-3">
                     <button type="button" onClick={handleDisconnectXendit}
                       className="px-4 py-3 bg-rose-600 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-rose-700 transition-all active:scale-95 flex-1">
-                      ❌ Batal / Daftar Ulang
+                      ❌ Batal / Edit Pengajuan
                     </button>
                   </div>
                 </div>

@@ -14,6 +14,7 @@ import {
   updateTenantPlan,
   updateTenantStatus,
   whatsAppUrl,
+  updateTenantPayment,
 } from '../../utils/platformAdmin';
 
 const TABS = [
@@ -41,6 +42,10 @@ export default function SuperAdminTenantDetail({ tenant, plans, onClose, onSaved
   });
   const [activeDays, setActiveDays] = useState(30);
 
+  const [merchantId, setMerchantId] = useState('');
+  const [qrisStatus, setQrisStatus] = useState('Belum Terdaftar');
+  const [vaStatus, setVaStatus] = useState('Belum Terdaftar');
+
   useEffect(() => {
     if (!tenant) return;
     setVertical(tenant.business_vertical || 'general');
@@ -50,6 +55,9 @@ export default function SuperAdminTenantDetail({ tenant, plans, onClose, onSaved
       maxStaff: tenant.max_staff_override ?? '',
       maxProducts: tenant.max_products_override ?? '',
     });
+    setMerchantId(tenant.xendit_merchant_id || '');
+    setQrisStatus(tenant.xendit_qris_status || 'Belum Terdaftar');
+    setVaStatus(tenant.xendit_va_status || 'Belum Terdaftar');
     setTab('summary');
   }, [tenant]);
 
@@ -106,6 +114,14 @@ export default function SuperAdminTenantDetail({ tenant, plans, onClose, onSaved
       maxOutlets: limits.maxOutlets === '' ? null : Number(limits.maxOutlets),
       maxStaff: limits.maxStaff === '' ? null : Number(limits.maxStaff),
       maxProducts: limits.maxProducts === '' ? null : Number(limits.maxProducts),
+    });
+  });
+
+  const handleSavePayment = () => run(async () => {
+    await updateTenantPayment(tenant.tenant_id, {
+      merchantId,
+      qrisStatus,
+      vaStatus
     });
   });
 
@@ -354,18 +370,66 @@ export default function SuperAdminTenantDetail({ tenant, plans, onClose, onSaved
           )}
 
           {tab === 'payment' && (
-            <section className="rounded-xl border border-slate-200 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">iPaymu Payment Gateway</h3>
-              <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                <div><p className="text-slate-400 text-xs">Merchant ID</p><p className="font-mono text-xs font-semibold break-all">{tenant.xendit_merchant_id || 'Belum terdaftar'}</p></div>
-                <div><p className="text-slate-400 text-xs">Status QRIS</p><p className="font-semibold">{tenant.xendit_qris_status}</p></div>
-                <div><p className="text-slate-400 text-xs">Status VA</p><p className="font-semibold">{tenant.xendit_va_status}</p></div>
-                <div><p className="text-slate-400 text-xs">Modul iPaymu</p><p className="font-semibold">{enabledModules.includes('xendit') ? '✅ Diaktifkan' : '❌ Nonaktif'}</p></div>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed pt-2 border-t border-slate-100">
-                Aktifkan modul <strong>ipaymu</strong> di tab Modul agar tenant bisa mengajukan QRIS/VA. Proses KYC tetap melalui iPaymu setelah sub-akun dibuat.
-              </p>
-            </section>
+            <div className="space-y-4 text-left">
+              <section className="rounded-xl border border-slate-200 p-5 space-y-4">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">iPaymu Payment Gateway Settings</h3>
+                
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-600">Merchant Kredensial iPaymu:</label>
+                  <input
+                    type="text"
+                    value={merchantId}
+                    onChange={(e) => setMerchantId(e.target.value)}
+                    placeholder="Contoh: IPAYMU|0000005695660902|SANDBOX..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 font-medium">Format penyambungan: <code>IPAYMU|VA_NUMBER|API_KEY</code>. Jika split payment aktif, API_KEY bersifat opsional.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-600">Status QRIS:</label>
+                    <select
+                      value={qrisStatus}
+                      onChange={(e) => setQrisStatus(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold"
+                    >
+                      <option value="Belum Terdaftar">Belum Terdaftar</option>
+                      <option value="Diproses">⏳ Diproses (KYC)</option>
+                      <option value="Aktif">🟢 Aktif</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-600">Status VA:</label>
+                    <select
+                      value={vaStatus}
+                      onChange={(e) => setVaStatus(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold"
+                    >
+                      <option value="Belum Terdaftar">Belum Terdaftar</option>
+                      <option value="Diproses">⏳ Diproses (KYC)</option>
+                      <option value="Aktif">🟢 Aktif</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-[10px] text-slate-500 space-y-1">
+                  <p>• <b>Belum Terdaftar:</b> Tenant belum mengajukan / terdaftar.</p>
+                  <p>• <b>Diproses:</b> Menampilkan status pemrosesan 1-2 hari kerja kepada Tenant.</p>
+                  <p>• <b>Aktif:</b> QRIS/VA aktif dan bisa digunakan kasir Tenant.</p>
+                </div>
+              </section>
+              
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleSavePayment}
+                className="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-all"
+              >
+                {busy ? 'Menyimpan...' : 'Simpan Pengaturan Pembayaran'}
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -131,3 +131,20 @@ export function formatRupiah(n) {
   }
   return 'Rp ' + formatted;
 }
+
+export async function updateTenantPayment(tenantId, data, pin) {
+  const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/saas/update-tenant-payment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      pin: requirePin(pin),
+      tenantId,
+      merchantId: data.merchantId,
+      qrisStatus: data.qrisStatus,
+      vaStatus: data.vaStatus
+    })
+  });
+  const resJson = await res.json();
+  if (!resJson.success) throw new Error(resJson.error || 'Gagal memperbarui pengaturan pembayaran');
+  return resJson;
+}
