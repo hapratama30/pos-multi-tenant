@@ -1083,10 +1083,10 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                   <div className="bg-gradient-to-br from-blue-50 to-teal-50/20 border border-blue-200/60 p-5 rounded-[2rem] space-y-4">
                     <div className="flex justify-between items-center flex-wrap gap-2">
                       <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
-                        🏦 Nomor Virtual Account Xendit (Fixed VA)
+                        🏦 Nomor Virtual Account iPaymu (Fixed VA)
                       </h4>
                       <span className={`text-[8px] px-2 py-0.5 font-black uppercase rounded border ${xenditVaStatus === 'Aktif' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                        {xenditVaStatus === 'Aktif' ? 'Xendit Fixed (Aktif)' : 'Xendit Fixed (Diproses / Simulasi)'}
+                        {xenditVaStatus === 'Aktif' ? 'iPaymu (Aktif)' : 'iPaymu (Diproses / Simulasi)'}
                       </span>
                     </div>
                     <p className="text-[10px] text-slate-500 font-medium">
@@ -1096,7 +1096,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                       {loadingVA ? (
                         <div className="col-span-1 sm:col-span-2 text-center p-4">
                           <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat VA Xendit...</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat VA iPaymu...</span>
                         </div>
                       ) : fixedVAs.length > 0 ? (
                         fixedVAs.map(v => (
@@ -1105,7 +1105,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                               <span className="text-[9px] font-black text-blue-700 uppercase tracking-wider block">{v.bank_code} VA</span>
                               <span className="font-mono text-xs font-black text-slate-800 tracking-wider">{v.account_number}</span>
                             </div>
-                            <span className="text-[8px] px-2 py-0.5 font-black uppercase rounded bg-blue-50 text-blue-700 border-blue-100">Xendit Fixed</span>
+                            <span className="text-[8px] px-2 py-0.5 font-black uppercase rounded bg-blue-50 text-blue-700 border-blue-100">iPaymu VA</span>
                           </div>
                         ))
                       ) : (
@@ -1260,9 +1260,9 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           <div className="pay-card space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">💰 Laporan Pencairan Otomatis (QRIS & VA Xendit)</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">💰 Laporan Pencairan Otomatis (QRIS & VA iPaymu)</p>
                 <p className="text-[11px] font-bold text-slate-400 mt-1">
-                  Pantau dana dari pembayaran otomatis QRIS & Virtual Account Xendit yang dikirim otomatis ke rekening bank Anda. Pembayaran manual (Cash & Transfer Manual) tidak tercatat di sini karena langsung masuk ke kasir/rekening Anda secara instan.
+                  Pantau dana dari pembayaran otomatis QRIS & Virtual Account iPaymu yang dikirim otomatis ke rekening bank Anda. Pembayaran manual (Cash & Transfer Manual) tidak tercatat di sini karena langsung masuk ke kasir/rekening Anda secara instan.
                 </p>
               </div>
             </div>
