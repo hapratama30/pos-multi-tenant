@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { updateJwtTenantMetadata } from './utils/authSession';
+import { updateJwtTenantMetadata, resolveUserFromSession } from './utils/authSession';
 import { findStaffForLogin, linkStaffAuthUserId } from './utils/staffLookup';
 
 export default function Login({ onLoginSuccess, onNavigateToRegister, onNavigateToLanding }) {
@@ -87,21 +87,15 @@ export default function Login({ onLoginSuccess, onNavigateToRegister, onNavigate
       await linkStaffAuthUserId(staffData.id, authData.user.id);
       await updateJwtTenantMetadata(staffData.tenant_id, staffData.role || 'Kasir', staffData.name);
 
-      // STEP 4: Pass semua data ke App.jsx — termasuk tenant_name
+      // STEP 4: Pass all resolved data (including plan_id and enabled_modules) to App.jsx
+      const resolvedUser = await resolveUserFromSession(authData.session);
+      if (!resolvedUser) {
+        await supabase.auth.signOut();
+        throw new Error("Gagal memuat profil data pengguna. Silakan coba lagi.");
+      }
+
       if (onLoginSuccess) {
-        onLoginSuccess({
-          id: staffData.id,
-          staff_id: staffData.id,
-          uid: authData.user.id,
-          email: authData.user.email,
-          tenant_id: staffData.tenant_id,
-          tenant_name: tenantData?.tenant_name || 'Toko Anda',
-          plan_id: tenantData?.plan_id || 'free',
-          name: staffData.name,
-          role: staffData.role || 'Kasir',
-          permissions: staffData.permissions,
-          outlet_id: staffData.outlet_id
-        });
+        onLoginSuccess(resolvedUser);
       }
 
     } catch (err) {
