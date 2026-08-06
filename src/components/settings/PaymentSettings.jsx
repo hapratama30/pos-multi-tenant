@@ -202,6 +202,8 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   const [xenditQrisStatus, setXenditQrisStatus] = useState('Belum Terdaftar');
   const [activationUrl, setActivationUrl] = useState('');
   const [manualAccountId, setManualAccountId] = useState('');
+  const [ipaymuVaInput, setIpaymuVaInput] = useState('');
+  const [ipaymuApiKeyInput, setIpaymuApiKeyInput] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -285,17 +287,34 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           ewallet: data.payment_ewallet_enabled === true,
         });
         const rawId = data.xendit_merchant_id || '';
-        const [accId, actUrl] = rawId.split('|');
-        setXenditAccountId(accId);
-        setXenditVaStatus(data.xendit_va_status || 'Belum Terdaftar');
-        setXenditQrisStatus(data.xendit_qris_status || 'Belum Terdaftar');
-        setActivationUrl(actUrl || '');
+        let accId = '';
+        let actUrl = '';
+        
+        if (rawId.startsWith('IPAYMU|')) {
+          const parts = rawId.split('|');
+          accId = parts[1] || '';
+          const apiKey = parts[2] || '';
+          setXenditAccountId(accId);
+          setXenditVaStatus('Aktif');
+          setXenditQrisStatus('Aktif');
+          setIpaymuVaInput(accId);
+          setIpaymuApiKeyInput(apiKey);
+        } else {
+          const parts = rawId.split('|');
+          accId = parts[0] || '';
+          actUrl = parts[1] || '';
+          setXenditAccountId(accId);
+          setXenditVaStatus(data.xendit_va_status || 'Belum Terdaftar');
+          setXenditQrisStatus(data.xendit_qris_status || 'Belum Terdaftar');
+          setActivationUrl(actUrl || '');
+        }
+
         setQrisNmid(data.qris_nmid || 'ID1020304050607');
         setQrisTid(data.qris_tid || 'A01');
 
         // SINKRONISASI STATUS SECARA REAL-TIME DARI XENDIT JIKA MASIH DIPROSES
         const currentStatus = (data.xendit_qris_status || '').toUpperCase();
-        if (accId && accId !== 'ID-AGRAPOS-BYPASS' && (currentStatus === 'DIPROSES' || currentStatus === 'BELUM TERDAFTAR')) {
+        if (accId && accId !== 'ID-AGRAPOS-BYPASS' && !rawId.startsWith('IPAYMU|') && (currentStatus === 'DIPROSES' || currentStatus === 'BELUM TERDAFTAR')) {
           getXenditAccount(accId)
             .then(resData => {
               if (resData.success) {
@@ -491,40 +510,42 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   };
 
   // handleSimulateActive removed (simulations cleaned up)
-  const handleLinkManualAccount = async (e) => {
+  const handleConnectIpaymu = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (!manualAccountId.trim()) { setMsg({ type: 'error', text: 'Account ID tidak boleh kosong!' }); return; }
-    if (!tenantId) { setMsg({ type: 'error', text: 'Tenant ID tidak tersedia.' }); return; }
+    if (!ipaymuVaInput.trim() || !ipaymuApiKeyInput.trim()) {
+      setMsg({ type: 'error', text: 'Virtual Account dan API Key iPaymu tidak boleh kosong!' });
+      return;
+    }
+    if (!tenantId) {
+      setMsg({ type: 'error', text: 'Tenant ID tidak tersedia.' });
+      return;
+    }
     setSaving(true);
     setMsg(null);
     try {
-      const trimmedId = manualAccountId.trim();
+      const dbValue = `IPAYMU|${ipaymuVaInput.trim()}|${ipaymuApiKeyInput.trim()}`;
       await supabase.from('payment_settings').upsert({
         tenant_id: tenantId,
         outlet_id: selectedOutletId,
-        xendit_merchant_id: trimmedId,
-        xendit_va_status: 'Diproses',
-        xendit_qris_status: 'Diproses',
+        xendit_merchant_id: dbValue,
+        xendit_va_status: 'Aktif',
+        xendit_qris_status: 'Aktif',
         updated_at: new Date().toISOString()
       }, { onConflict: 'tenant_id,outlet_id' });
 
-      setXenditAccountId(trimmedId);
-      setXenditVaStatus('Diproses');
-      setXenditQrisStatus('Diproses');
-      setMsg({ type: 'success', text: `Berhasil menghubungkan iPaymu Account ID: ${trimmedId}!` });
-      setManualAccountId('');
+      setXenditAccountId(ipaymuVaInput.trim());
+      setXenditVaStatus('Aktif');
+      setXenditQrisStatus('Aktif');
+      setMsg({ type: 'success', text: 'Berhasil menghubungkan akun iPaymu Mandiri Anda!' });
     } catch (err) {
-      setMsg({ type: 'error', text: err.message || 'Gagal menghubungkan Account ID.' });
+      setMsg({ type: 'error', text: err.message || 'Gagal menghubungkan akun iPaymu.' });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDisconnectXendit = async () => {
-    const isLinkedOnly = xenditVaStatus !== 'Aktif';
-    const confirmMsg = isLinkedOnly 
-      ? 'Apakah Anda yakin ingin membatalkan pendaftaran ini untuk melakukan registrasi ulang?' 
-      : 'Apakah Anda yakin ingin memutuskan hubungan akun iPaymu Anda?';
+    const confirmMsg = 'Apakah Anda yakin ingin memutuskan hubungan akun iPaymu Anda?';
 
     if (!window.confirm(confirmMsg)) return;
     setSaving(true);
@@ -544,9 +565,10 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
       setXenditAccountId('');
       setXenditVaStatus('Belum Terdaftar');
       setXenditQrisStatus('Belum Terdaftar');
+      setIpaymuVaInput('');
+      setIpaymuApiKeyInput('');
       setMethods(prev => ({ ...prev, qris: false, virtual_account: false }));
-      const successText = isLinkedOnly ? 'Pendaftaran berhasil dibatalkan. Anda dapat melakukan pendaftaran ulang sekarang.' : 'Koneksi iPaymu berhasil diputuskan.';
-      setMsg({ type: 'success', text: successText });
+      setMsg({ type: 'success', text: 'Koneksi iPaymu berhasil diputuskan.' });
     } catch (err) {
       setMsg({ type: 'error', text: err.message || 'Gagal mereset koneksi.' });
     } finally {
@@ -585,40 +607,26 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
   const renderXenditRegistrationForm = () => {
     return (
       <div className="space-y-4 border-t pt-4 border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🚀 Daftarkan Merchant Baru ke iPaymu</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🔌 Hubungkan Kredensial Akun iPaymu Mandiri</p>
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Usaha / Cabang</label>
-            <input type="text" value={businessName} onChange={e => setBusinessName(e.target.value)}
-              placeholder="Contoh: Laundry Bersih Cabang 2" className="pay-input" required />
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu Virtual Account (VA)</label>
+            <input type="text" value={ipaymuVaInput} onChange={e => setIpaymuVaInput(e.target.value)}
+              placeholder="Contoh: 0000005695660902" className="pay-input" required />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Operasional</label>
-            <input type="email" value={emailBisnis} onChange={e => setEmailBisnis(e.target.value)}
-              placeholder="contoh: toko@gmail.com" className="pay-input" required />
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu API Key</label>
+            <input type="text" value={ipaymuApiKeyInput} onChange={e => setIpaymuApiKeyInput(e.target.value)}
+              placeholder="Contoh: SANDBOX080FCF54-..." className="pay-input" required />
           </div>
         </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={handleRegisterXenPlatform} disabled={saving}
+        
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={handleConnectIpaymu} disabled={saving}
             className="w-full py-4 rounded-[1.75rem] bg-teal-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-teal-100 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-            {saving ? '⏳ Menghubungi API iPaymu...' : '🚀 Daftarkan Akun iPaymu'}
+            {saving ? '⏳ Menghubungkan...' : '🔌 Hubungkan Akun iPaymu'}
           </button>
-        </div>
-
-        {/* HUBUNGKAN ID MANUAL */}
-        <div className="border-t border-dashed pt-4 border-slate-200 mt-2 space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">🔗 ATAU Hubungkan iPaymu Sub-Account ID yang Sudah Ada</p>
-          <div className="flex flex-col sm:flex-row gap-3 items-end">
-            <div className="flex-1 space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">iPaymu Sub-Account ID</label>
-              <input type="text" value={manualAccountId} onChange={e => setManualAccountId(e.target.value)}
-                placeholder="Contoh: 6afd31abd487c64364c0c5e8" className="pay-input" />
-            </div>
-            <button type="button" onClick={handleLinkManualAccount} disabled={saving}
-              className="py-4 px-6 rounded-[1.75rem] bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-50 shrink-0">
-              Hubungkan ID
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -861,7 +869,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
           <div className="space-y-6 animate-fadeIn">
             {/* Status Card */}
             <div className="pay-card space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">⚡ INTEGRASI XENDIT — Status Akun</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">⚡ INTEGRASI IPAYMU — Status Akun</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div>
@@ -931,14 +939,14 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
                     <span className="text-3xl">✅</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between gap-3">
-                        <h4 className="text-xs font-black text-emerald-800 uppercase">Xendit QRIS & VA Siap Pakai!</h4>
+                        <h4 className="text-xs font-black text-emerald-800 uppercase">iPaymu QRIS & VA Siap Pakai!</h4>
                         <button type="button" onClick={handleDisconnectXendit}
                           className="px-3 py-1.5 bg-rose-600 text-white text-[8px] font-black uppercase rounded-lg hover:bg-rose-700 transition-all active:scale-95">
                           🔌 Putuskan Hubungan
                         </button>
                       </div>
                       <p className="text-[11px] text-emerald-600 font-bold mt-0.5">
-                        Dana transaksi otomatis routing ke dompet ID: <span className="font-mono">{xenditAccountId || '—'}</span>
+                        Dana transaksi otomatis routing ke akun VA: <span className="font-mono">{xenditAccountId || '—'}</span>
                       </p>
                     </div>
                   </div>

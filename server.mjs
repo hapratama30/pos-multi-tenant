@@ -356,7 +356,71 @@ app.post('/api/xendit/create-qr', async (req, res) => {
     if (dbError) throw dbError;
     const settings = settingsList?.[0];
     
-    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
+    const rawId = settings?.xendit_merchant_id || '';
+
+    // Direct iPaymu Routing
+    if (rawId.startsWith('IPAYMU|')) {
+      const [_, tenantVa, tenantApiKey] = rawId.split('|');
+      const cleanHostUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
+
+      const ipaymuPayload = {
+        name: 'AgraPOS Customer',
+        email: 'customer@agrapos.dev',
+        phone: '081234567890',
+        amount: String(amount),
+        notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
+        paymentMethod: 'qris',
+        paymentChannel: 'qris',
+        referenceId: `TX-${transactionId}`,
+        product: ['Transaksi POS'],
+        qty: ['1'],
+        price: [String(amount)],
+        description: ['Pembayaran POS AgraPOS']
+      };
+
+      const bodyJson = JSON.stringify(ipaymuPayload);
+      const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
+      const stringToSign = `POST:${tenantVa}:${bodyHash}:${tenantApiKey}`;
+      const signature = crypto.createHmac('sha256', tenantApiKey).update(stringToSign).digest('hex');
+
+      const nowTime = new Date();
+      const timestamp = nowTime.getFullYear() +
+        String(nowTime.getMonth() + 1).padStart(2, '0') +
+        String(nowTime.getDate()).padStart(2, '0') +
+        String(nowTime.getHours()).padStart(2, '0') +
+        String(nowTime.getMinutes()).padStart(2, '0') +
+        String(nowTime.getSeconds()).padStart(2, '0');
+
+      const isSandbox = tenantApiKey.toUpperCase().includes('SANDBOX');
+      const response = await axios.post(
+        isSandbox
+          ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
+          : 'https://my.ipaymu.com/api/v2/payment/direct',
+        ipaymuPayload,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'va': tenantVa,
+            'signature': signature,
+            'timestamp': timestamp
+          }
+        }
+      );
+
+      if (!response.data || response.data.Status !== 200) {
+        throw new Error(`iPaymu QRIS Failed: ${response.data?.Message || 'Unknown error'}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        qrString: response.data.Data.QrString || response.data.Data.Url || '',
+        qrCodeId: String(response.data.Data.TransactionId),
+        status: 'ACTIVE'
+      });
+    }
+    
+    const xenditMerchantId = rawId.split('|')[0];
     
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       return res.status(200).json({
@@ -392,9 +456,9 @@ app.post('/api/xendit/create-qr', async (req, res) => {
       status: response.data.status,
     });
   } catch (error) {
-    console.error('Error Create QR Xendit:', error.response?.data || error.message);
+    console.error('Error Create QR:', error.response?.data || error.message);
     return res.status(500).json({
-      error: error.response?.data?.message || error.message || 'Gagal generate QRIS dari Xendit.',
+      error: error.response?.data?.message || error.message || 'Gagal generate QRIS.',
     });
   }
 });
@@ -424,7 +488,73 @@ app.post('/api/xendit/create-va', async (req, res) => {
     if (dbError) throw dbError;
     const settings = settingsList?.[0];
 
-    const xenditMerchantId = (settings?.xendit_merchant_id || '').split('|')[0];
+    const rawId = settings?.xendit_merchant_id || '';
+
+    // Direct iPaymu VA Routing
+    if (rawId.startsWith('IPAYMU|')) {
+      const [_, tenantVa, tenantApiKey] = rawId.split('|');
+      const cleanHostUrl = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host');
+      const ipaymuChannel = bankCode.toLowerCase(); // e.g. bca, mandiri, bni, bri
+
+      const ipaymuPayload = {
+        name: name || 'AgraPOS Customer',
+        email: 'customer@agrapos.dev',
+        phone: '081234567890',
+        amount: String(amount),
+        notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
+        paymentMethod: 'va',
+        paymentChannel: ipaymuChannel,
+        referenceId: `TX-${transactionId}`,
+        product: ['Transaksi POS'],
+        qty: ['1'],
+        price: [String(amount)],
+        description: ['Pembayaran VA POS AgraPOS']
+      };
+
+      const bodyJson = JSON.stringify(ipaymuPayload);
+      const bodyHash = crypto.createHash('sha256').update(bodyJson).digest('hex');
+      const stringToSign = `POST:${tenantVa}:${bodyHash}:${tenantApiKey}`;
+      const signature = crypto.createHmac('sha256', tenantApiKey).update(stringToSign).digest('hex');
+
+      const nowTime = new Date();
+      const timestamp = nowTime.getFullYear() +
+        String(nowTime.getMonth() + 1).padStart(2, '0') +
+        String(nowTime.getDate()).padStart(2, '0') +
+        String(nowTime.getHours()).padStart(2, '0') +
+        String(nowTime.getMinutes()).padStart(2, '0') +
+        String(nowTime.getSeconds()).padStart(2, '0');
+
+      const isSandbox = tenantApiKey.toUpperCase().includes('SANDBOX');
+      const response = await axios.post(
+        isSandbox
+          ? 'https://sandbox.ipaymu.com/api/v2/payment/direct'
+          : 'https://my.ipaymu.com/api/v2/payment/direct',
+        ipaymuPayload,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'va': tenantVa,
+            'signature': signature,
+            'timestamp': timestamp
+          }
+        }
+      );
+
+      if (!response.data || response.data.Status !== 200) {
+        throw new Error(`iPaymu VA Failed: ${response.data?.Message || 'Unknown error'}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        accountNumber: response.data.Data.PaymentNo,
+        bankCode: bankCode.toUpperCase(),
+        name: name,
+        externalId: String(response.data.Data.TransactionId)
+      });
+    }
+
+    const xenditMerchantId = rawId.split('|')[0];
 
     if (!xenditMerchantId || xenditMerchantId === 'ID-AGRAPOS-BYPASS') {
       const suffix = String(tenantId).replace(/\D/g, '').substring(0, 7) || '1234567';
@@ -465,9 +595,9 @@ app.post('/api/xendit/create-va', async (req, res) => {
       status: response.data.status,
     });
   } catch (error) {
-    console.error('Error Create VA Xendit:', error.response?.data || error.message);
+    console.error('Error Create VA:', error.response?.data || error.message);
     return res.status(500).json({
-      error: error.response?.data?.message || error.message || 'Gagal generate VA dari Xendit.',
+      error: error.response?.data?.message || error.message || 'Gagal generate VA.',
     });
   }
 });
@@ -2923,6 +3053,37 @@ app.post('/api/ipaymu/callback', async (req, res) => {
       });
 
       console.log(`[iPaymu Callback Success] Tenant ${billing.tenant_id} upgraded successfully.`);
+    } else if (refId) {
+      // POS Transaction
+      const transactionId = Number(refId.replace('TX-', ''));
+      if (!isNaN(transactionId)) {
+        console.log(`[iPaymu Callback] Processing POS Transaction ID: ${transactionId}`);
+
+        const { data: tx, error: txError } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('id', transactionId)
+          .maybeSingle();
+
+        if (txError) throw txError;
+        if (tx) {
+          if (tx.status !== 'completed') {
+            const { error: updateError } = await supabase
+              .from('transactions')
+              .update({
+                payment_method: 'QRIS (iPaymu)',
+                status: 'completed',
+                settlement_status: 'completed'
+              })
+              .eq('id', transactionId);
+
+            if (updateError) throw updateError;
+            console.log(`[iPaymu Callback] Sukses memproses pembayaran transaksi #${transactionId} via iPaymu.`);
+          }
+        } else {
+          console.warn(`[iPaymu Callback] Transaksi ID ${transactionId} tidak ditemukan.`);
+        }
+      }
     }
 
     return res.status(200).send('OK');
