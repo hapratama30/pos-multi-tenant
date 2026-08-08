@@ -16,12 +16,15 @@ if (!transactionId) {
   console.error('❌ ERROR: Silakan masukkan ID Transaksi / QR ID!');
   console.log('Penggunaan: node simulate_payment.mjs <id> [nominal] [target] [subaccount_id]');
   console.log('\n--- TARGET YANG TERSEDIA ---');
-  console.log('1. local       : Tembak langsung ke localhost (default)');
-  console.log('2. vercel      : Tembak langsung ke server live Vercel (tanpa masuk log Xendit)');
-  console.log('3. xendit-va   : Memicu API Simulasi VA resmi Xendit lewat server Vercel Anda (TERCATAT di Webhook Logs!)');
-  console.log('4. xendit-qris : Memicu API Simulasi QRIS resmi Xendit (TERCATAT di Webhook Logs Xendit!)');
-  console.log('\nContoh VA Resmi  : node simulate_payment.mjs 173 18000 xendit-va');
-  console.log('Contoh QRIS Resmi: node simulate_payment.mjs qr_1d2d3d4d... 18000 xendit-qris 6a37dc56f5e4e7310c5b6b10');
+  console.log('1. local         : Tembak langsung webhook Xendit ke localhost (default)');
+  console.log('2. vercel        : Tembak langsung webhook Xendit ke server live Vercel');
+  console.log('3. xendit-va     : Memicu API Simulasi VA resmi Xendit');
+  console.log('4. xendit-qris    : Memicu API Simulasi QRIS resmi Xendit');
+  console.log('5. ipaymu-local  : Tembak langsung webhook iPaymu ke localhost');
+  console.log('6. ipaymu-vercel : Tembak langsung webhook iPaymu ke server live Vercel');
+  console.log('\nContoh iPaymu Local : node simulate_payment.mjs 201 6000 ipaymu-local');
+  console.log('Contoh VA Resmi     : node simulate_payment.mjs 173 18000 xendit-va');
+  console.log('Contoh QRIS Resmi   : node simulate_payment.mjs qr_1d2d3d4d... 18000 xendit-qris 6a37dc56f5e4e7310c5b6b10');
   process.exit(1);
 }
 
@@ -80,7 +83,36 @@ if (targetEnv === 'xendit-va' || targetEnv === 'xendit-qris') {
   process.exit(0);
 }
 
-// B. JALUR TEMBAK LANGSUNG (Bypass Xendit - Tidak tercatat di Webhook Logs Xendit)
+// B. JALUR SIMULASI IPAYMU (Tembak Langsung Callback)
+if (targetEnv === 'ipaymu-local' || targetEnv === 'ipaymu-vercel') {
+  const baseUrl = targetEnv === 'ipaymu-vercel' ? 'https://agrapos.vercel.app' : 'http://localhost:5000';
+  const serverUrl = `${baseUrl}/api/ipaymu/callback`;
+
+  const payload = {
+    trx_id: String(Math.floor(100000 + Math.random() * 900000)), // dummy trx ID iPaymu
+    status: 'berhasil',
+    amount: amount,
+    reference_id: `TX-${transactionId}`
+  };
+
+  console.log(`🚀 Mengirim webhook tiruan iPaymu langsung ke: ${serverUrl}`);
+  console.log(`📦 Payload: ${JSON.stringify(payload, null, 2)}\n`);
+
+  try {
+    const response = await axios.post(serverUrl, payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log(`✅ BERHASIL! Status: ${response.status} (${response.statusText})`);
+    console.log(`💬 Respons Server: "${response.data}"`);
+  } catch (error) {
+    console.error('❌ GAGAL MENGIRIM WEBHOOK IPAYMU:', error.response?.status, error.response?.data || error.message);
+  }
+  process.exit(0);
+}
+
+// C. JALUR TEMBAK LANGSUNG XENDIT (Bypass Xendit)
 const payload = {
   event: 'qr.payment',
   data: {
@@ -96,7 +128,7 @@ const payload = {
 const baseUrl = targetEnv === 'vercel' ? 'https://agrapos.vercel.app' : 'http://localhost:5000';
 const serverUrl = `${baseUrl}/api/xendit/webhook-payment`;
 
-console.log(`🚀 Mengirim webhook tiruan langsung ke: ${serverUrl}`);
+console.log(`🚀 Mengirim webhook tiruan Xendit langsung ke: ${serverUrl}`);
 console.log(`📦 Payload: ${JSON.stringify(payload, null, 2)}\n`);
 
 try {
@@ -108,5 +140,5 @@ try {
   console.log(`✅ BERHASIL! Status: ${response.status} (${response.statusText})`);
   console.log(`💬 Respons Server: "${response.data}"`);
 } catch (error) {
-  console.error('❌ GAGAL MENGIRIM WEBHOOK:', error.response?.status, error.response?.data || error.message);
+  console.error('❌ GAGAL MENGIRIM WEBHOOK XENDIT:', error.response?.status, error.response?.data || error.message);
 }

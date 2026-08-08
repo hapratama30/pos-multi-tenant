@@ -3236,7 +3236,7 @@ app.post('/api/ipaymu/callback', async (req, res) => {
 
         if (txError) throw txError;
         if (tx) {
-          if (tx.status !== 'completed') {
+          if (tx.status !== 'completed' || tx.payment_method === 'Belum Lunas') {
             const { error: updateError } = await supabase
               .from('transactions')
               .update({
