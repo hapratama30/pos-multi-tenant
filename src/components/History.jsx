@@ -751,7 +751,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
                       
-                      {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                      {typeof window !== 'undefined' && (window.location.hostname !== 'agrapos.vercel.app' || String(paymentSettings?.xendit_merchant_id || '').toUpperCase().includes('SANDBOX')) && (
                         <>
                           <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] text-center w-full">
                             <span className="font-bold text-slate-600">Simulasi CLI:</span><br/>
@@ -762,7 +762,8 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                             type="button"
                             onClick={async () => {
                               try {
-                                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                                const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+                                const response = await fetch(`${apiBase}/api/xendit/webhook-payment`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
@@ -836,12 +837,13 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                     <p className="text-[9px] text-slate-400 text-center font-bold">Pilih bank untuk menghasilkan VA.</p>
                   )}
 
-                  {xenditVaNumber && typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                  {xenditVaNumber && typeof window !== 'undefined' && (window.location.hostname !== 'agrapos.vercel.app' || String(paymentSettings?.xendit_merchant_id || '').toUpperCase().includes('SANDBOX')) && (
                     <button
                       type="button"
                       onClick={async () => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                          const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+                          const response = await fetch(`${apiBase}/api/xendit/webhook-payment`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({

@@ -2597,12 +2597,13 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                   🔄 Cek Status Pembayaran
                                 </button>
                                 <span className="text-[9px] text-slate-400 font-bold text-center block mt-0.5">Tx ID: {savedTransaction?.id}</span>
-                                {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                                {typeof window !== 'undefined' && (window.location.hostname !== 'agrapos.vercel.app' || String(paymentSettings?.xendit_merchant_id || '').toUpperCase().includes('SANDBOX')) && (
                                   <button
                                     type="button"
                                     onClick={async () => {
                                       try {
-                                        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/xendit/webhook-payment`, {
+                                        const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+                                        const response = await fetch(`${apiBase}/api/xendit/webhook-payment`, {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
                                           body: JSON.stringify({
