@@ -3282,7 +3282,7 @@ app.post('/api/ipaymu/callback', async (req, res) => {
               .update({
                 payment_method: displayMethod,
                 status: 'completed',
-                settlement_status: 'completed'
+                settlement_status: 'pending'
               })
               .eq('id', transactionId);
 
