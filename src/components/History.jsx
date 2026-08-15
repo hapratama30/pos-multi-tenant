@@ -747,7 +747,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                         className="w-32 h-32 object-contain animate-in fade-in duration-300"
                       />
                       <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
-                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id}</span>
+                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id} | Ref ID: TX-{tx.id}</span>
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
                       

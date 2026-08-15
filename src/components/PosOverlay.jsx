@@ -2449,7 +2449,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                           className="w-32 h-32 object-contain"
                                         />
                                         <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
-                                        <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
+                                        <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id} | Ref ID: TX-{savedTransaction?.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
 
                                         {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
                                           <div className="mt-2.5 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-mono text-[8px] text-center w-full max-w-[200px]">
