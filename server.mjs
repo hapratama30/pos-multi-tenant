@@ -447,6 +447,21 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         throw new Error('API Key iPaymu tidak dikonfigurasi!');
       }
 
+      // Ambil nama tenant untuk detail deskripsi transaksi di iPaymu
+      let tenantName = 'AgraPOS';
+      try {
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('tenant_name')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        if (tenantData?.tenant_name) {
+          tenantName = tenantData.tenant_name;
+        }
+      } catch (e) {
+        console.error('Error fetching tenant name for iPaymu QR:', e.message);
+      }
+
       const totalAmount = Number(amount);
       const ipaymuPayload = {
         name: 'AgraPOS Customer',
@@ -457,10 +472,10 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         paymentMethod: 'qris',
         paymentChannel: 'qris',
         referenceId: `TX-${transactionId}`,
-        product: ['Transaksi POS'],
+        product: [`POS - ${tenantName}`],
         qty: ['1'],
         price: [String(totalAmount)],
-        description: ['Pembayaran POS AgraPOS']
+        description: [`Pembayaran POS ${tenantName}`]
       };
 
       // Terapkan bagi hasil (Split) ke VA Tenant jika mode split aktif
@@ -628,6 +643,21 @@ app.post('/api/xendit/create-va', async (req, res) => {
         throw new Error('API Key iPaymu tidak dikonfigurasi!');
       }
 
+      // Ambil nama tenant untuk detail deskripsi transaksi di iPaymu
+      let tenantName = 'AgraPOS';
+      try {
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('tenant_name')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        if (tenantData?.tenant_name) {
+          tenantName = tenantData.tenant_name;
+        }
+      } catch (e) {
+        console.error('Error fetching tenant name for iPaymu VA:', e.message);
+      }
+
       const totalAmount = Number(amount);
       const ipaymuPayload = {
         name: name || 'AgraPOS Customer',
@@ -638,10 +668,10 @@ app.post('/api/xendit/create-va', async (req, res) => {
         paymentMethod: 'va',
         paymentChannel: ipaymuChannel,
         referenceId: `TX-${transactionId}`,
-        product: ['Transaksi POS'],
+        product: [`POS - ${tenantName}`],
         qty: ['1'],
         price: [String(totalAmount)],
-        description: ['Pembayaran VA POS AgraPOS']
+        description: [`Pembayaran VA POS ${tenantName}`]
       };
 
       // Terapkan bagi hasil (Split) ke VA Tenant jika mode split aktif
