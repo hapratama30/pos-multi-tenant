@@ -1980,7 +1980,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
           style={{ animation: 'fadeInOverlay 0.2s ease-out' }}
         >
           <div 
-            className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto" 
+            className={`${paymentFlow === 'pilih_aksi' ? 'max-w-md' : 'max-w-6xl'} w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300`} 
             style={{ 
               border: '1px solid #d1ede8',
               animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)' 
@@ -1996,7 +1996,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
             </button>
 
             {/* KOLOM KIRI */}
-            <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh]" style={{ background: '#f8fffe', borderRight: '1px solid #d1ede8' }}>
+            <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh]" style={{ background: '#f8fffe', borderRight: paymentFlow !== 'pilih_aksi' ? '1px solid #d1ede8' : 'none' }}>
               {/* BUTTON KEMBALI */}
               <div className="mb-4">
                 <button 
@@ -2091,16 +2091,26 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                 </div>
               </div>
 
-              {/* QRIS STATIS NOTA */}
-              {savedTransaction?.payment_method === 'Belum Lunas' && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((paymentSettings?.xendit_qris_status || '').toUpperCase())) && (
-                <div className="bg-white rounded-2xl p-4 mb-4 flex flex-col items-center justify-center text-center border shrink-0 animate-in fade-in duration-300" style={{ borderColor: '#d1ede8' }}>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">📋 SCAN QRIS STATIS TOKO</p>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent('https://agrapos.dev/merchant/' + (paymentSettings.xendit_merchant_id || 'ID-AGRAPOS-DEMO'))}`}
-                    alt="QRIS Statis Toko"
-                    className="w-24 h-24 object-contain mb-1.5"
-                  />
-                  <span className="font-mono text-[8px] text-slate-400 font-bold">{paymentSettings.xendit_merchant_id || 'ID-AGRAPOS-DEMO'}</span>
+              {/* PILIH AKSI PEMBAYARAN (DIPINDAHKAN KE SINI KARENA QRIS STATIS DIHAPUS) */}
+              {paymentFlow === 'pilih_aksi' && (
+                <div className="bg-white rounded-2xl p-4 mb-4 flex flex-col items-center gap-3 border shrink-0 animate-in fade-in duration-300" style={{ borderColor: '#d1ede8' }}>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pilih Aksi Pembayaran</p>
+                  
+                  <button 
+                    onClick={() => { setPaymentFlow('bon_selesai'); }}
+                    className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 p-4 rounded-2xl font-black text-xs uppercase tracking-wider transition active:scale-95 flex flex-col items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <ScheduleIcon sx={{ fontSize: 24, color: '#64748b' }} />
+                    <span>Simpan (Belum Lunas)</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setPaymentFlow('bayar_langsung')}
+                    className="w-full text-white p-4 rounded-2xl font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-lg flex flex-col items-center gap-1.5 pos-btn-teal border-none cursor-pointer"
+                  >
+                    <CreditCardIcon sx={{ fontSize: 24 }} />
+                    <span>Bayar Sekarang (Lunas)</span>
+                  </button>
                 </div>
               )}
 
@@ -2140,29 +2150,9 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
             </div>
 
             {/* KOLOM KANAN: NUMPAD & PEMBAYARAN */}
-            <div className="flex-1 p-6 flex flex-col justify-center bg-white relative">
-              {paymentFlow === 'pilih_aksi' ? (
-                <div className="max-w-sm mx-auto w-full space-y-6 flex flex-col items-center justify-center">
-                  <div className="text-center space-y-2 mb-4">
-                    <h4 className="font-black text-slate-800 text-lg uppercase">Pilih Aksi Pembayaran</h4>
-                    <p className="text-xs text-slate-500 font-medium">Transaksi udah disimpen. Mau diapain nih?</p>
-                  </div>
-                  <button onClick={() => { setPaymentFlow('bon_selesai'); }}
-                    className="w-full bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-slate-700 p-5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all transform hover:scale-105 shadow-sm flex flex-col items-center gap-2">
-                    <ScheduleIcon sx={{ fontSize: 28, color: '#64748b' }} /><span>Simpan (Belum Lunas)</span>
-                  </button>
-                  <div className="w-full flex items-center gap-3 text-slate-300">
-                    <div className="flex-1 border-t border-slate-200"></div>
-                    <span className="text-[10px] font-black uppercase">ATAU</span>
-                    <div className="flex-1 border-t border-slate-200"></div>
-                  </div>
-                  <button onClick={() => setPaymentFlow('bayar_langsung')}
-                    className="w-full text-white p-5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all transform hover:scale-105 shadow-xl flex flex-col items-center gap-2 pos-btn-teal">
-                    <CreditCardIcon sx={{ fontSize: 28 }} /><span>Bayar Sekarang (Lunas)</span>
-                  </button>
-                </div>
-
-              ) : paymentFlow === 'bon_selesai' ? (
+            {paymentFlow !== 'pilih_aksi' && (
+              <div className="flex-1 p-6 flex flex-col justify-center bg-white relative">
+                {paymentFlow === 'bon_selesai' ? (
                 <div className="max-w-sm mx-auto w-full text-center space-y-6">
                   <div className="mb-4 text-amber-500 flex justify-center">
                     <ReceiptIcon sx={{ fontSize: 64 }} />
@@ -2590,6 +2580,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       )}
