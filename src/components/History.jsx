@@ -280,7 +280,6 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
   const [availableMethods, setAvailableMethods] = useState([
     { label: 'Tunai', icon: '💵' }, { label: 'QRIS', icon: '📱' }, { label: 'Virtual Account', icon: '🏦' }
   ]);
-
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [xenditQrCode, setXenditQrCode] = useState('');
   const [xenditQrCodeId, setXenditQrCodeId] = useState('');
@@ -288,6 +287,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
   const [xenditVaBank, setXenditVaBank] = useState('BCA');
   const [loadingXendit, setLoadingXendit] = useState(false);
   const [errorXendit, setErrorXendit] = useState('');
+  const [jumlahBayar, setJumlahBayar] = useState(0);
 
   // Fetch metode pembayaran yang aktif di settings
   useEffect(() => {
@@ -331,6 +331,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
     setXenditQrCodeId('');
     setXenditVaNumber('');
     setErrorXendit('');
+    setJumlahBayar(0);
   }, [tx?.id]);
 
   // Generate dynamic QRIS
@@ -435,17 +436,49 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
     0
   );
 
+  const handleNumpad = (val) => {
+    if (val === 'C') {
+      setJumlahBayar(0);
+    } else if (val === 'DEL') {
+      const str = String(jumlahBayar);
+      if (str.length <= 1) setJumlahBayar(0);
+      else setJumlahBayar(Number(str.substring(0, str.length - 1)));
+    } else {
+      const currentStr = String(jumlahBayar);
+      if (currentStr === '0') {
+        if (val === '00' || val === '000' || val === 0) return;
+        setJumlahBayar(Number(val));
+      } else {
+        setJumlahBayar(Number(currentStr + val));
+      }
+    }
+  };
+
   const handleUpdatePayment = useCallback(async () => {
     if (!tx?.id) return;
     setUpdating(true);
     setActionMsg(null);
     try {
+      const paid = paymentMethod === 'Tunai' ? Number(jumlahBayar) : Number(tx.total);
+      const change = paymentMethod === 'Tunai' ? Math.max(0, Number(jumlahBayar) - Number(tx.total)) : 0;
+
       const { error } = await supabase
         .from('transactions')
-        .update({ payment_method: paymentMethod })
+        .update({ 
+          payment_method: paymentMethod,
+          status: 'completed',
+          paid_amount: paid,
+          change_amount: change
+        })
         .eq('id', tx.id);
       if (error) throw error;
-      const updated = { ...tx, payment_method: paymentMethod };
+      const updated = { 
+        ...tx, 
+        payment_method: paymentMethod, 
+        status: 'completed',
+        paid_amount: paid,
+        change_amount: change
+      };
       setTx(updated);
       onUpdated?.(updated);
       setShowPaymentPanel(false);
@@ -458,7 +491,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
     } finally {
       setUpdating(false);
     }
-  }, [tx, paymentMethod, onUpdated]);
+  }, [tx, paymentMethod, jumlahBayar, onUpdated]);
 
   const handlePrint = useCallback(async () => {
     if (!tenantId) return alert('Tenant tidak terdeteksi.');
@@ -695,78 +728,273 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
 
           {isUnpaid && showPaymentPanel && (
             <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
-              <section
-                className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh] pointer-events-auto border space-y-4"
+              <div 
+                className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300"
                 style={{ 
-                  borderColor: '#d1ede8',
-                  animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  border: '1px solid #d1ede8',
+                  animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)' 
                 }}
               >
+                {/* CLOSE BUTTON */}
                 <button
                   type="button"
                   onClick={() => setShowPaymentPanel(false)}
-                  className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition border-none shadow-sm font-black text-sm cursor-pointer active:scale-95"
+                  className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition border-none shadow-sm font-black text-sm cursor-pointer active:scale-95 animate-in fade-in duration-300"
+                  title="Tutup Panel Pembayaran"
                 >
                   ✕
                 </button>
 
-                <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: '#d1ede8' }}>
-                  <span className="text-xl">💳</span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-amber-600">Update Status Pembayaran</p>
-                    <p className="text-[9px] text-slate-400 font-bold">Pilih metode pembayaran baru untuk transaksi ini</p>
+                {/* KOLOM KIRI: STRUK & RINCIAN PESANAN */}
+                <div 
+                  className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh]" 
+                  style={{ background: '#f8fffe', borderRight: '1px solid #d1ede8' }}
+                >
+                  {/* HEADER STATUS */}
+                  <div className="flex items-center gap-4 border-b pb-4 mb-5" style={{ borderColor: '#d1ede8' }}>
+                    <div className="flex-1 bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex items-center gap-2.5">
+                      <span className="text-2xl">👤</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Pelanggan</p>
+                        <p className="font-bold text-slate-700 truncate">{meta.customer || 'Pelanggan Umum'}</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex items-center gap-2.5">
+                      <span className="text-2xl">💵</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Kasir</p>
+                        <p className="font-bold text-slate-700 truncate">{meta.kasir || 'Tidak dicatat'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RINCIAN PESANAN */}
+                  <div className="mb-4 flex-1">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="text-base">🛒</span>
+                      <p className="text-[10px] font-black uppercase text-teal-800 tracking-wider mb-0">Rincian Pesanan</p>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                      <ul className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pos-scroll p-0 m-0 list-none">
+                        {items.map((item, i) => {
+                          const lineTotal = Number(item.price) * Number(item.qty || 1);
+                          return (
+                            <li key={i} className="px-4 py-3 flex justify-between items-start gap-4">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-black text-xs text-slate-800 uppercase tracking-tight truncate m-0">{item.name}</p>
+                                <p className="text-[9px] text-slate-400 font-bold mt-0.5 m-0">
+                                  {Number(item.qty || 1)} x {formatRp(item.price)}
+                                </p>
+                              </div>
+                              <span className="text-xs font-black text-slate-800 shrink-0">{formatRp(lineTotal)}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      
+                      <div className="px-4 py-3.5 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Total Tagihan</span>
+                        <span className="text-base font-black text-teal-600">{formatRp(tx.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TOMBOL PRINT / WA */}
+                  <div className="space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
+                    <button 
+                      type="button"
+                      onClick={handlePrintBluetooth} 
+                      className="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 border-none cursor-pointer"
+                    >
+                      🔵 Cetak Bluetooth
+                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        type="button"
+                        onClick={handlePrint} 
+                        className="flex-1 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-[9px] font-black uppercase tracking-wider transition border border-teal-100 hover:bg-teal-100 flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        Print Standar
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={handleSendWA} 
+                        className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer border-none shadow-md shadow-emerald-500/20 active:scale-95"
+                      >
+                        Kirim WA
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className={`grid gap-2 ${availableMethods.length <= 3 ? 'grid-cols-3' : availableMethods.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                  {availableMethods.map((m) => (
-                  <button
-                    key={m.label}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.label)}
-                    className="py-2.5 px-2 rounded-xl text-[10px] font-black uppercase border transition flex flex-col items-center gap-1"
-                    style={
-                      paymentMethod === m.label
-                        ? { background: `linear-gradient(135deg, ${THEME.tealDark}, ${THEME.teal})`, color: 'white', borderColor: THEME.teal, boxShadow: '0 4px 12px rgba(13,148,136,0.35)' }
-                        : { background: THEME.bg, color: '#475569', borderColor: '#d1ede8' }
-                    }
-                  >
-                    <span className="text-base">{m.icon}</span>
-                    <span>{m.label}</span>
-                  </button>
-                ))}
-              </div>
 
-              {/* DYNAMIC QRIS DISPLAY */}
-              {paymentMethod === 'QRIS' && (
-                <div className="flex flex-col items-center justify-center p-4 border border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3 shrink-0">
-                  {loadingXendit ? (
-                    <div className="text-center py-6">
-                      <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
+                {/* KOLOM KANAN: NUMPAD & PILIH PEMBAYARAN */}
+                <div 
+                  className="flex-1 p-6 flex flex-col justify-start bg-white relative overflow-y-auto pos-scroll max-h-[85vh]"
+                >
+                  {/* PILIH METODE PEMBAYARAN */}
+                  <div className="mb-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">Pilih Metode Pembayaran</p>
+                    <div className={`grid gap-2 ${availableMethods.length <= 3 ? 'grid-cols-3' : availableMethods.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      {availableMethods.map((m) => (
+                        <button
+                          key={m.label}
+                          type="button"
+                          onClick={() => {
+                            setPaymentMethod(m.label);
+                            if (m.label === 'Tunai') setJumlahBayar(Number(tx.total));
+                          }}
+                          className="py-2.5 px-2 rounded-xl text-[10px] font-black uppercase border transition flex flex-col items-center gap-1 cursor-pointer"
+                          style={
+                            paymentMethod === m.label
+                              ? { background: `linear-gradient(135deg, ${THEME.tealDark}, ${THEME.teal})`, color: 'white', borderColor: THEME.teal, boxShadow: '0 4px 12px rgba(13,148,136,0.35)' }
+                              : { background: THEME.bg, color: '#475569', borderColor: '#d1ede8' }
+                          }
+                        >
+                          <span className="text-base">{m.icon}</span>
+                          <span>{m.label}</span>
+                        </button>
+                      ))}
                     </div>
-                  ) : errorXendit ? (
-                    <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
-                      {errorXendit}
-                    </div>
-                  ) : xenditQrCode ? (
-                    <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(xenditQrCode)}`}
-                        alt="QRIS Code Dinamis" 
-                        className="w-32 h-32 object-contain animate-in fade-in duration-300"
-                      />
-                      <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
-                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id} | Ref ID: TX-{tx.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
-                      <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
-                      <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
-                      
-                      {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
-                        <>
-                          <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] text-center w-full">
-                            <span className="font-bold text-slate-600">Simulasi CLI:</span><br/>
-                            node simulate_payment.mjs {tx.id} {Math.round(tx.total)}
+                  </div>
+
+                  {/* AREA INFO PEMBAYARAN SPESIFIK */}
+                  <div className="flex-1 flex flex-col justify-start mb-4">
+                    {paymentMethod === 'Tunai' ? (
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black uppercase text-slate-400 text-center tracking-wider">Input Uang Tunai Diterima (Rupiah)</label>
+                        <div className="rounded-2xl p-4 text-center" style={{ background: '#f8fffe', border: '2px solid #b2ddd6' }}>
+                          <span className="text-3xl font-mono font-black text-slate-900">{formatRp(jumlahBayar)}</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, '00', 0, '000'].map((num) => (
+                            <button 
+                              key={num} 
+                              type="button"
+                              onClick={() => handleNumpad(num)}
+                              className="bg-white border border-slate-200 shadow-sm hover:bg-slate-100 p-2.5 rounded-xl font-black font-mono text-xl transition active:scale-95 cursor-pointer"
+                            >
+                              {num}
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => handleNumpad('C')} className="col-span-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 p-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer">Clear (C)</button>
+                          <button type="button" onClick={() => handleNumpad('DEL')} className="col-span-2 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 p-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition active:scale-95 cursor-pointer">Hapus ⌫</button>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setJumlahBayar(Number(tx.total))}
+                          className="w-full bg-slate-100 border border-slate-200 text-slate-700 font-bold p-3 rounded-xl text-xs hover:bg-slate-200 transition uppercase tracking-wider mt-1 cursor-pointer"
+                        >
+                          💵 Pas Sesuai Tagihan
+                        </button>
+                      </div>
+                    ) : paymentMethod === 'QRIS' ? (
+                      <div className="flex flex-col items-center justify-center p-4 border border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3 shrink-0">
+                        {loadingXendit ? (
+                          <div className="text-center py-6">
+                            <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
                           </div>
-                          
+                        ) : errorXendit ? (
+                          <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
+                            {errorXendit}
+                          </div>
+                        ) : xenditQrCode ? (
+                          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
+                            <img 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(xenditQrCode)}`}
+                              alt="QRIS Code Dinamis" 
+                              className="w-32 h-32 object-contain animate-in fade-in duration-300"
+                            />
+                            <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
+                            <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id} | Ref ID: TX-{tx.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
+                            <p className="text-xs font-black text-slate-800 mt-2 m-0">Total Tagihan: {formatRp(tx.total)}</p>
+                            <p className="text-[8px] text-slate-400 font-medium mt-0.5 m-0">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
+                            
+                            {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                              <>
+                                <div className="mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] text-center w-full">
+                                  <span className="font-bold text-slate-600">Simulasi CLI:</span><br/>
+                                  node simulate_payment.mjs {tx.id} {Math.round(tx.total)}
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+                                      const response = await fetch(`${apiBase}/api/xendit/webhook-payment`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          external_id: String(tx.id),
+                                          amount: tx.total
+                                        })
+                                      });
+                                      if (response.ok) {
+                                        setActionMsg({ type: 'success', text: 'Simulasi Bayar Terkirim! Status akan terupdate otomatis.' });
+                                      } else {
+                                        setActionMsg({ type: 'error', text: 'Gagal memicu simulasi.' });
+                                      }
+                                    } catch (err) {
+                                      setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
+                                    }
+                                  }}
+                                  className="mt-2.5 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+                                >
+                                  ⚡ Simulasikan Pembayaran Sukses (Sandbox)
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center text-xs text-slate-400 font-bold">Gagal memuat QRIS.</div>
+                        )}
+                      </div>
+                    ) : paymentMethod === 'Virtual Account' ? (
+                      <div className="flex flex-col items-center justify-center p-4 border border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3 shrink-0">
+                        <div className="flex justify-center gap-1.5 flex-wrap w-full py-1">
+                          {['BCA', 'Mandiri', 'BNI', 'BRI'].map(b => (
+                            <button
+                              key={b}
+                              type="button"
+                              onClick={() => { setXenditVaBank(b); setXenditVaNumber(''); }}
+                              className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${xenditVaBank === b ? 'bg-teal-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                            >
+                              {b}
+                            </button>
+                          ))}
+                        </div>
+
+                        {loadingXendit ? (
+                          <div className="text-center py-6">
+                            <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
+                          </div>
+                        ) : errorXendit ? (
+                          <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
+                            {errorXendit}
+                          </div>
+                        ) : xenditVaNumber ? (
+                          <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3 w-full animate-in fade-in duration-200">
+                            <div className="min-w-0 flex-1 text-left">
+                              <p className="text-[9px] font-black uppercase tracking-wider text-teal-600 m-0">🏦 VA {xenditVaBank} Dinamis (iPaymu)</p>
+                              <p className="font-mono font-black text-sm text-slate-900 tracking-wider break-all m-0">{xenditVaNumber}</p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5 truncate m-0">Total: {formatRp(tx.total)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => { navigator.clipboard?.writeText(xenditVaNumber); setActionMsg({ type: 'success', text: 'VA disalin!' }); }}
+                              className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-teal-50 text-teal-700 border border-teal-100 hover:bg-teal-100 transition-all cursor-pointer border-none"
+                            >
+                              Salin
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[9px] text-slate-400 text-center font-bold m-0">Pilih bank untuk menghasilkan VA.</p>
+                        )}
+
+                        {xenditVaNumber && typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
                           <button
                             type="button"
                             onClick={async () => {
@@ -777,7 +1005,8 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
                                     external_id: String(tx.id),
-                                    amount: tx.total
+                                    amount: tx.total,
+                                    bank_code: xenditVaBank
                                   })
                                 });
                                 if (response.ok) {
@@ -789,116 +1018,46 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                                 setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
                               }
                             }}
-                            className="mt-2.5 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+                            className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
                           >
-                            ⚡ Simulasikan Pembayaran Sukses (Sandbox)
+                            ⚡ Simulasikan Pembayaran VA (Sandbox)
                           </button>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center text-xs text-slate-400 font-bold">Gagal memuat QRIS.</div>
-                  )}
-                </div>
-              )}
-
-              {/* DYNAMIC VA DISPLAY */}
-              {paymentMethod === 'Virtual Account' && (
-                <div className="flex flex-col items-center justify-center p-4 border border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3 shrink-0">
-                  <div className="flex justify-center gap-1.5 flex-wrap w-full py-1">
-                    {['BCA', 'Mandiri', 'BNI', 'BRI'].map(b => (
-                      <button
-                        key={b}
-                        type="button"
-                        onClick={() => { setXenditVaBank(b); setXenditVaNumber(''); }}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${xenditVaBank === b ? 'bg-teal-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                      >
-                        {b}
-                      </button>
-                    ))}
+                        )}
+                      </div>
+                    ) : null}
                   </div>
 
-                  {loadingXendit ? (
-                    <div className="text-center py-6">
-                      <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
+                  {/* KEMBALIAN (JIKA TUNAI) */}
+                  {paymentMethod === 'Tunai' && Number(jumlahBayar) >= Number(tx.total) && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center mb-4 shrink-0 animate-in slide-in-from-bottom-2 duration-200">
+                      <span className="text-emerald-700 font-bold text-xs uppercase tracking-wider">Kembalian:</span>
+                      <span className="font-mono font-black text-emerald-600 text-xl">{formatRp(Number(jumlahBayar) - Number(tx.total))}</span>
                     </div>
-                  ) : errorXendit ? (
-                    <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
-                      {errorXendit}
-                    </div>
-                  ) : xenditVaNumber ? (
-                    <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3 w-full">
-                      <div className="min-w-0 flex-1 text-left">
-                        <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (iPaymu)</p>
-                        <p className="font-mono font-black text-sm text-slate-900 tracking-wider break-all">{xenditVaNumber}</p>
-                        <p className="text-[8px] text-slate-400 font-bold mt-0.5 truncate">Total: {formatRp(tx.total)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { navigator.clipboard?.writeText(xenditVaNumber); setActionMsg({ type: 'success', text: 'VA disalin!' }); }}
-                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-teal-50 text-teal-700 border border-teal-100 hover:bg-teal-100 transition-all cursor-pointer border-none"
-                      >
-                        Salin
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-[9px] text-slate-400 text-center font-bold">Pilih bank untuk menghasilkan VA.</p>
                   )}
 
-                  {xenditVaNumber && typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
+                  {/* ACTIONS */}
+                  <div className="flex gap-3 pt-4 border-t border-slate-100 mt-auto shrink-0">
                     <button
                       type="button"
-                      onClick={async () => {
-                        try {
-                          const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
-                          const response = await fetch(`${apiBase}/api/xendit/webhook-payment`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              external_id: String(tx.id),
-                              amount: tx.total,
-                              bank_code: xenditVaBank
-                            })
-                          });
-                          if (response.ok) {
-                            setActionMsg({ type: 'success', text: 'Simulasi Bayar Terkirim! Status akan terupdate otomatis.' });
-                          } else {
-                            setActionMsg({ type: 'error', text: 'Gagal memicu simulasi.' });
-                          }
-                        } catch (err) {
-                          setActionMsg({ type: 'error', text: 'Gagal terhubung ke backend.' });
-                        }
-                      }}
-                      className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+                      onClick={() => setShowPaymentPanel(false)}
+                      className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase border text-slate-500 bg-white hover:bg-slate-50 transition cursor-pointer"
+                      style={{ borderColor: '#d1ede8' }}
                     >
-                      ⚡ Simulasikan Pembayaran VA (Sandbox)
+                      Batal
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={handleUpdatePayment}
+                      disabled={updating || (paymentMethod === 'Tunai' && Number(jumlahBayar) < Number(tx.total))}
+                      className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase text-white disabled:opacity-50 transition shadow-lg cursor-pointer border-none"
+                      style={{ background: THEME.orange }}
+                    >
+                      {updating ? '⏳...' : 'Simpan Status'}
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentPanel(false)}
-                  className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase border text-slate-500"
-                  style={{ borderColor: '#d1ede8', background: 'white' }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUpdatePayment}
-                  disabled={updating}
-                  className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase text-white disabled:opacity-50"
-                  style={{ background: THEME.orange }}
-                >
-                  {updating ? 'Menyimpan...' : 'Simpan Status'}
-                </button>
               </div>
-            </section>
-          </div>
+            </div>
           )}
 
           <p className="text-[10px] text-slate-300 font-mono text-center mt-4">No. Nota: {tx.invoice_number || tx.id || '-'}</p>
