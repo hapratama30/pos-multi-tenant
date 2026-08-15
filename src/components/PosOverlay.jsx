@@ -2597,7 +2597,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                   🔄 Cek Status Pembayaran
                                 </button>
                                 <span className="text-[9px] text-slate-400 font-bold text-center block mt-0.5">Tx ID: {savedTransaction?.id}</span>
-                                {typeof window !== 'undefined' && (window.location.hostname !== 'agrapos.vercel.app' || String(paymentSettings?.xendit_merchant_id || '').toUpperCase().includes('SANDBOX')) && (
+                                {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
                                   <button
                                     type="button"
                                     onClick={async () => {
