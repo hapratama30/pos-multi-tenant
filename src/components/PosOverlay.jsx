@@ -1383,6 +1383,8 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         }
         @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes holdPop { from { opacity:0; transform:scale(0.95) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUpModal { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .hold-panel-anim { animation: holdPop 0.2s cubic-bezier(0.34,1.56,0.64,1) both; }
         .pos-btn-teal { background: var(--pos-teal); color: white; }
         .pos-btn-teal:hover { background: var(--pos-teal-dark); }
@@ -1621,8 +1623,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         </div>
       )}
 
-      {!showDetail ? (
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <div className="flex lg:hidden border-b flex-shrink-0" style={{ background: 'white', borderColor: '#d1ede8' }}>
             <button onClick={() => setActiveTab('produk')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black tracking-wider transition ${activeTab === 'produk' ? 'pos-tab-active' : 'text-slate-400'}`}>
@@ -1972,13 +1973,39 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
           </div>
         </div>
 
-      ) : (
-        /* ─── SCREEN DETAIL TRANSAKSI & PEMBAYARAN ─── */
-        <div className="flex-1 overflow-y-auto pos-scroll p-4 lg:p-8 flex items-start justify-center">
-          <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2" style={{ border: '1px solid #d1ede8' }}>
+      {/* ─── SCREEN DETAIL TRANSAKSI & PEMBAYARAN (MODAL POPUP OVERLAY WITH BLUR) ─── */}
+      {showDetail && (
+        <div 
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 lg:p-8 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200"
+          style={{ animation: 'fadeInOverlay 0.2s ease-out' }}
+        >
+          <div 
+            className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto" 
+            style={{ 
+              border: '1px solid #d1ede8',
+              animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+            }}
+          >
+            {/* CLOSE BUTTON TO RETURN TO CASHIER */}
+            <button 
+              onClick={() => setShowDetail(false)}
+              className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition border-none shadow-sm font-black text-sm cursor-pointer active:scale-95"
+              title="Kembali ke Layar Kasir"
+            >
+              ✕
+            </button>
 
             {/* KOLOM KIRI */}
             <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh]" style={{ background: '#f8fffe', borderRight: '1px solid #d1ede8' }}>
+              {/* BUTTON KEMBALI */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => setShowDetail(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer shadow-sm active:scale-95"
+                >
+                  ◀ KEMBALI
+                </button>
+              </div>
 
               {/* HEADER STATUS */}
               <div className="flex items-center gap-4 border-b pb-4 mb-5" style={{ borderColor: '#d1ede8' }}>
