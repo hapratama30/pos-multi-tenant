@@ -2747,7 +2747,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
         </div>
       )}
 
-      {showSuccessModal && (
+      {showSuccessModal && !showDetail && (
         <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-center space-y-5 shadow-2xl border border-emerald-100 animate-in zoom-in-95 duration-300">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-sm animate-bounce">
