@@ -447,8 +447,12 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         throw new Error('API Key iPaymu tidak dikonfigurasi!');
       }
 
-      // Ambil nama tenant untuk detail deskripsi transaksi di iPaymu
+      // Ambil nama tenant, detail transaksi & info pelanggan
       let tenantName = 'AgraPOS';
+      let customerName = 'Umum';
+      let customerEmail = '';
+      let customerPhone = '';
+
       try {
         const { data: tenantData } = await supabase
           .from('tenants')
@@ -458,15 +462,67 @@ app.post('/api/xendit/create-qr', async (req, res) => {
         if (tenantData?.tenant_name) {
           tenantName = tenantData.tenant_name;
         }
+
+        const { data: txData } = await supabase
+          .from('transactions')
+          .select('customer_name')
+          .eq('id', transactionId)
+          .maybeSingle();
+
+        const rawName = txData?.customer_name || '';
+        const cleanName = rawName.trim();
+
+        if (cleanName && cleanName.toLowerCase() !== 'guest' && !cleanName.toLowerCase().includes('umum') && cleanName !== 'AgraPOS Customer') {
+          customerName = cleanName;
+          const { data: custData } = await supabase
+            .from('customers')
+            .select('email, phone')
+            .eq('tenant_id', tenantId)
+            .eq('name', customerName)
+            .maybeSingle();
+          if (custData) {
+            customerEmail = custData.email || '';
+            customerPhone = custData.phone || '';
+          }
+        }
       } catch (e) {
-        console.error('Error fetching tenant name for iPaymu QR:', e.message);
+        console.error('Error fetching tenant/customer info for iPaymu QR:', e.message);
+      }
+
+      // Ambil info fallback dari tenant/owner jika kosong agar tidak menggunakan email/telepon asal-asalan
+      if (!customerEmail || !customerPhone) {
+        try {
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('phone')
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+            
+          const { data: ownerData } = await supabase
+            .from('staff')
+            .select('email, phone')
+            .eq('tenant_id', tenantId)
+            .ilike('role', 'owner')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (!customerPhone) {
+            customerPhone = ownerData?.phone || tenantData?.phone || '081234567890';
+          }
+          if (!customerEmail) {
+            customerEmail = ownerData?.email || 'noreply@agrapos.id';
+          }
+        } catch (err) {
+          console.error('Error fetching fallback merchant contact info for QR:', err.message);
+        }
       }
 
       const totalAmount = Number(amount);
       const ipaymuPayload = {
-        name: 'AgraPOS Customer',
-        email: 'customer@agrapos.dev',
-        phone: '081234567890',
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
         amount: String(totalAmount),
         notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
         paymentMethod: 'qris',
@@ -643,8 +699,12 @@ app.post('/api/xendit/create-va', async (req, res) => {
         throw new Error('API Key iPaymu tidak dikonfigurasi!');
       }
 
-      // Ambil nama tenant untuk detail deskripsi transaksi di iPaymu
+      // Ambil nama tenant, detail transaksi & info pelanggan
       let tenantName = 'AgraPOS';
+      let customerName = 'Umum';
+      let customerEmail = '';
+      let customerPhone = '';
+
       try {
         const { data: tenantData } = await supabase
           .from('tenants')
@@ -654,15 +714,59 @@ app.post('/api/xendit/create-va', async (req, res) => {
         if (tenantData?.tenant_name) {
           tenantName = tenantData.tenant_name;
         }
+
+        const cleanName = (name || '').trim();
+        if (cleanName && cleanName.toLowerCase() !== 'guest' && !cleanName.toLowerCase().includes('umum') && cleanName !== 'AgraPOS Customer') {
+          customerName = cleanName;
+          const { data: custData } = await supabase
+            .from('customers')
+            .select('email, phone')
+            .eq('tenant_id', tenantId)
+            .eq('name', customerName)
+            .maybeSingle();
+          if (custData) {
+            customerEmail = custData.email || '';
+            customerPhone = custData.phone || '';
+          }
+        }
       } catch (e) {
-        console.error('Error fetching tenant name for iPaymu VA:', e.message);
+        console.error('Error fetching tenant/customer info for iPaymu VA:', e.message);
+      }
+
+      // Ambil info fallback dari tenant/owner jika kosong agar tidak menggunakan email/telepon asal-asalan
+      if (!customerEmail || !customerPhone) {
+        try {
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('phone')
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+            
+          const { data: ownerData } = await supabase
+            .from('staff')
+            .select('email, phone')
+            .eq('tenant_id', tenantId)
+            .ilike('role', 'owner')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (!customerPhone) {
+            customerPhone = ownerData?.phone || tenantData?.phone || '081234567890';
+          }
+          if (!customerEmail) {
+            customerEmail = ownerData?.email || 'noreply@agrapos.id';
+          }
+        } catch (err) {
+          console.error('Error fetching fallback merchant contact info for VA:', err.message);
+        }
       }
 
       const totalAmount = Number(amount);
       const ipaymuPayload = {
-        name: name || 'AgraPOS Customer',
-        email: 'customer@agrapos.dev',
-        phone: '081234567890',
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
         amount: String(totalAmount),
         notifyUrl: `${cleanHostUrl}/api/ipaymu/callback`,
         paymentMethod: 'va',
