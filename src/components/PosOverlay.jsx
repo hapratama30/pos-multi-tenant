@@ -569,6 +569,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
   const [savedTransaction, setSavedTransaction] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [paymentFlow, setPaymentFlow] = useState('pilih_aksi');
+  const [modalTab, setModalTab] = useState('pembayaran');
   const [jumlahBayar, setJumlahBayar] = useState(0);
   const [prosesBayar, setProsesBayar] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1980,7 +1981,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
           style={{ animation: 'fadeInOverlay 0.2s ease-out' }}
         >
           <div 
-            className={`${paymentFlow === 'pilih_aksi' ? 'max-w-2xl' : 'max-w-6xl'} w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300`} 
+            className={`${paymentFlow === 'pilih_aksi' ? 'max-w-2xl' : 'max-w-6xl'} w-full bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300`} 
             style={{ 
               border: '1px solid #d1ede8',
               animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)' 
@@ -1995,8 +1996,28 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
               ✕
             </button>
 
+            {/* Mobile Tab Bar */}
+            {paymentFlow !== 'pilih_aksi' && (
+              <div className="flex md:hidden border-b flex-shrink-0 bg-white w-full relative z-40 pr-12" style={{ borderColor: '#d1ede8' }}>
+                <button 
+                  type="button"
+                  onClick={() => setModalTab('struk')}
+                  className={`flex-1 py-3 text-xs font-black tracking-wider transition ${modalTab === 'struk' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50 font-black' : 'text-slate-400 font-bold'}`}
+                >
+                  📄 STRUK PESANAN
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setModalTab('pembayaran')}
+                  className={`flex-1 py-3 text-xs font-black tracking-wider transition ${modalTab === 'pembayaran' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50 font-black' : 'text-slate-400 font-bold'}`}
+                >
+                  💳 PEMBAYARAN
+                </button>
+              </div>
+            )}
+
             {/* KOLOM KIRI */}
-            <div className={`flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] ${paymentFlow !== 'pilih_aksi' ? 'hidden lg:flex' : 'flex'}`} style={{ background: '#f8fffe', borderRight: paymentFlow !== 'pilih_aksi' ? '1px solid #d1ede8' : 'none' }}>
+            <div className={`flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] ${paymentFlow !== 'pilih_aksi' && modalTab !== 'struk' ? 'hidden md:flex' : 'flex'}`} style={{ background: '#f8fffe', borderRight: paymentFlow !== 'pilih_aksi' ? '1px solid #d1ede8' : 'none' }}>
               {/* BUTTON KEMBALI */}
               <div className="mb-4">
                 <button 
@@ -2105,7 +2126,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                   </button>
 
                   <button 
-                    onClick={() => setPaymentFlow('bayar_langsung')}
+                    onClick={() => { setPaymentFlow('bayar_langsung'); setModalTab('pembayaran'); }}
                     className="w-full text-white p-4 rounded-2xl font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-lg flex flex-col items-center gap-1.5 pos-btn-teal border-none cursor-pointer"
                   >
                     <CreditCardIcon sx={{ fontSize: 24 }} />
@@ -2151,7 +2172,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
 
             {/* KOLOM KANAN: NUMPAD & PEMBAYARAN */}
             {paymentFlow !== 'pilih_aksi' && (
-              <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] justify-start bg-white relative">
+              <div className={`flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] justify-start bg-white relative ${modalTab !== 'pembayaran' ? 'hidden md:flex' : 'flex'}`}>
                 {paymentFlow === 'bon_selesai' ? (
                 <div className="max-w-sm mx-auto w-full text-center space-y-6 py-4">
                   <div className="mb-4 text-amber-500 flex justify-center">
@@ -2161,12 +2182,12 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                   <p className="text-sm text-slate-500 font-medium">Sip, transaksi ini masuk ke riwayat sebagai "Belum Lunas".</p>
                   
                   {/* Info desktop saja */}
-                  <div className="hidden lg:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-slate-50 p-3 rounded-xl border">
+                  <div className="hidden md:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-slate-50 p-3 rounded-xl border">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
 
                   {/* Tombol Print/WA khusus Mobile */}
-                  <div className="block lg:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
+                  <div className="block md:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
                     <button onClick={handlePrintBluetooth} className="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 border-none cursor-pointer">
                       <BluetoothIcon sx={{ fontSize: 16 }} /> Cetak Bluetooth
                     </button>
@@ -2195,12 +2216,12 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                   <p className="text-sm text-slate-500 font-medium">Transaksi beres. Lu bisa print nota / kirim WA atau tutup kasir.</p>
                   
                   {/* Info desktop saja */}
-                  <div className="hidden lg:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100">
+                  <div className="hidden md:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
 
                   {/* Tombol Print/WA khusus Mobile */}
-                  <div className="block lg:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
+                  <div className="block md:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
                     <button onClick={handlePrintBluetooth} className="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 border-none cursor-pointer">
                       <BluetoothIcon sx={{ fontSize: 16 }} /> Cetak Bluetooth
                     </button>
@@ -2223,7 +2244,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
               ) : (
                 <div className="max-w-sm mx-auto w-full space-y-4 py-2">
                   {/* Summary Header khusus Mobile/Tablet */}
-                  <div className="lg:hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3 flex justify-between items-center shrink-0">
+                  <div className="md:hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3 flex justify-between items-center shrink-0">
                     <div>
                       <p className="text-[9px] font-black uppercase text-slate-400">Total Tagihan</p>
                       <p className="font-mono font-black text-xl text-teal-600">{formatRp(totalAkhir)}</p>
