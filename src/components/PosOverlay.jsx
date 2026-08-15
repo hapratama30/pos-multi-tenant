@@ -1980,7 +1980,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
           style={{ animation: 'fadeInOverlay 0.2s ease-out' }}
         >
           <div 
-            className={`${paymentFlow === 'pilih_aksi' ? 'max-w-md' : 'max-w-6xl'} w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300`} 
+            className={`${paymentFlow === 'pilih_aksi' ? 'max-w-2xl' : 'max-w-6xl'} w-full bg-white rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden my-2 max-h-[90vh] relative pointer-events-auto transition-all duration-300`} 
             style={{ 
               border: '1px solid #d1ede8',
               animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)' 
