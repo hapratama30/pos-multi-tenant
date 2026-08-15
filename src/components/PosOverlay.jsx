@@ -1996,7 +1996,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
             </button>
 
             {/* KOLOM KIRI */}
-            <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh]" style={{ background: '#f8fffe', borderRight: paymentFlow !== 'pilih_aksi' ? '1px solid #d1ede8' : 'none' }}>
+            <div className={`flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] ${paymentFlow !== 'pilih_aksi' ? 'hidden lg:flex' : 'flex'}`} style={{ background: '#f8fffe', borderRight: paymentFlow !== 'pilih_aksi' ? '1px solid #d1ede8' : 'none' }}>
               {/* BUTTON KEMBALI */}
               <div className="mb-4">
                 <button 
@@ -2151,41 +2151,92 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
 
             {/* KOLOM KANAN: NUMPAD & PEMBAYARAN */}
             {paymentFlow !== 'pilih_aksi' && (
-              <div className="flex-1 p-6 flex flex-col justify-center bg-white relative">
+              <div className="flex-1 p-6 flex flex-col overflow-y-auto pos-scroll max-h-[85vh] justify-start bg-white relative">
                 {paymentFlow === 'bon_selesai' ? (
-                <div className="max-w-sm mx-auto w-full text-center space-y-6">
+                <div className="max-w-sm mx-auto w-full text-center space-y-6 py-4">
                   <div className="mb-4 text-amber-500 flex justify-center">
                     <ReceiptIcon sx={{ fontSize: 64 }} />
                   </div>
                   <h4 className="font-black text-amber-600 text-2xl uppercase">DISIMPAN!</h4>
                   <p className="text-sm text-slate-500 font-medium">Sip, transaksi ini masuk ke riwayat sebagai "Belum Lunas".</p>
-                  <div className="text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-slate-50 p-3 rounded-xl border">
+                  
+                  {/* Info desktop saja */}
+                  <div className="hidden lg:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-slate-50 p-3 rounded-xl border">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
+
+                  {/* Tombol Print/WA khusus Mobile */}
+                  <div className="block lg:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
+                    <button onClick={handlePrintBluetooth} className="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 border-none cursor-pointer">
+                      <BluetoothIcon sx={{ fontSize: 16 }} /> Cetak Bluetooth
+                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={handlePrint} className="flex-1 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-[9px] font-black uppercase tracking-wider transition border border-teal-100 hover:bg-teal-100 flex items-center justify-center gap-1 cursor-pointer">
+                        <PrintIcon sx={{ fontSize: 14 }} /> Print Standar
+                      </button>
+                      <button onClick={handleKirimWA} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer border-none shadow-md shadow-emerald-500/20 active:scale-95">
+                        <WhatsAppIcon sx={{ fontSize: 14 }} /> Kirim WA
+                      </button>
+                    </div>
+                  </div>
+
                   <button onClick={handleFinishAndClose}
-                    className="w-full bg-slate-800 hover:bg-slate-900 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg">
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg active:scale-95 cursor-pointer border-none mt-2">
                     ✕ Tutup Layar Kasir
                   </button>
                 </div>
 
               ) : paymentFlow === 'selesai' ? (
-                <div className="max-w-sm mx-auto w-full text-center space-y-6">
+                <div className="max-w-sm mx-auto w-full text-center space-y-6 py-4">
                   <div className="mb-4 text-emerald-500 flex justify-center">
                     <CheckCircleIcon sx={{ fontSize: 64 }} />
                   </div>
                   <h4 className="font-black text-emerald-600 text-2xl uppercase">LUNAS!</h4>
                   <p className="text-sm text-slate-500 font-medium">Transaksi beres. Lu bisa print nota / kirim WA atau tutup kasir.</p>
-                  <div className="text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100">
+                  
+                  {/* Info desktop saja */}
+                  <div className="hidden lg:block text-[10px] font-bold text-slate-400 mt-2 mb-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl border border-emerald-100">
                     Cetak Nota atau Kirim WA lewat panel sebelah kiri 👈
                   </div>
+
+                  {/* Tombol Print/WA khusus Mobile */}
+                  <div className="block lg:hidden space-y-2 mt-4 pt-4 border-t" style={{ borderColor: '#d1ede8' }}>
+                    <button onClick={handlePrintBluetooth} className="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 border-none cursor-pointer">
+                      <BluetoothIcon sx={{ fontSize: 16 }} /> Cetak Bluetooth
+                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={handlePrint} className="flex-1 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-[9px] font-black uppercase tracking-wider transition border border-teal-100 hover:bg-teal-100 flex items-center justify-center gap-1 cursor-pointer">
+                        <PrintIcon sx={{ fontSize: 14 }} /> Print Standar
+                      </button>
+                      <button onClick={handleKirimWA} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer border-none shadow-md shadow-emerald-500/20 active:scale-95">
+                        <WhatsAppIcon sx={{ fontSize: 14 }} /> Kirim WA
+                      </button>
+                    </div>
+                  </div>
+
                   <button onClick={handleFinishAndClose}
-                    className="w-full bg-slate-800 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg">
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white p-4 rounded-xl font-black uppercase tracking-wider shadow-lg active:scale-95 cursor-pointer border-none mt-2">
                     ✕ Tutup Layar Kasir
                   </button>
                 </div>
 
               ) : (
-                <div className="max-w-sm mx-auto w-full space-y-4">
+                <div className="max-w-sm mx-auto w-full space-y-4 py-2">
+                  {/* Summary Header khusus Mobile/Tablet */}
+                  <div className="lg:hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3 flex justify-between items-center shrink-0">
+                    <div>
+                      <p className="text-[9px] font-black uppercase text-slate-400">Total Tagihan</p>
+                      <p className="font-mono font-black text-xl text-teal-600">{formatRp(totalAkhir)}</p>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setPaymentFlow('pilih_aksi')}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 border rounded-xl text-[10px] font-black uppercase tracking-wider transition shadow-sm active:scale-95 cursor-pointer border-slate-200"
+                    >
+                      ◀ Struk
+                    </button>
+                  </div>
+
                   {!cart.some(i => i.is_ppob) && (
                     <label className="flex items-center justify-center gap-2 text-[10px] font-black uppercase text-slate-500 cursor-pointer">
                       <input type="checkbox" checked={useSplitPayment} onChange={(e) => setUseSplitPayment(e.target.checked)} />
@@ -2242,12 +2293,12 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                           <div className="grid grid-cols-4 gap-2.5">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, '00', 0, '000'].map((num) => (
                               <button key={num} onClick={() => handleNumpad(num)}
-                                className="bg-white border border-slate-200 shadow-sm hover:bg-slate-100 p-3.5 rounded-xl font-black font-mono text-xl transition active:scale-95">
+                                className="bg-white border border-slate-200 shadow-sm hover:bg-slate-100 p-2.5 lg:p-3 rounded-xl font-black font-mono text-xl transition active:scale-95">
                                 {num}
                               </button>
                             ))}
-                            <button onClick={() => handleNumpad('C')} className="col-span-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 p-3 rounded-xl font-black text-sm uppercase transition active:scale-95 tracking-wider">Clear (C)</button>
-                            <button onClick={() => handleNumpad('DEL')} className="col-span-2 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 p-3 rounded-xl font-black text-sm uppercase transition active:scale-95 tracking-wider">Hapus ⌫</button>
+                            <button onClick={() => handleNumpad('C')} className="col-span-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 p-2.5 lg:p-3 rounded-xl font-black text-xs uppercase tracking-wider transition active:scale-95">Clear (C)</button>
+                            <button onClick={() => handleNumpad('DEL')} className="col-span-2 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 p-2.5 lg:p-3 rounded-xl font-black text-xs uppercase tracking-wider transition active:scale-95">Hapus ⌫</button>
                           </div>
                           <button onClick={() => setJumlahBayar(totalAkhir)}
                             className="w-full bg-slate-100 border border-slate-200 text-slate-700 font-bold p-3 rounded-xl text-xs hover:bg-slate-200 transition uppercase tracking-wider mt-1">
