@@ -535,7 +535,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
   return (
     <div className="fixed inset-0 z-[999999] flex flex-col animate-in slide-in-from-right duration-300" style={{ background: THEME.bg }}>
       <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
-        <div className="max-w-3xl mx-auto w-full flex items-center justify-between gap-3">
+        <div className="w-full flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
@@ -549,7 +549,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
       </div>
 
       <div className="flex-1 overflow-y-auto w-full pb-28">
-        <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-5 sm:py-6 space-y-5">
+        <div className="w-full px-4 sm:px-6 py-5 sm:py-6 space-y-5">
           <header className="border-b pb-4" style={{ borderColor: '#d1ede8' }}>
             <span className="text-[9px] font-black uppercase tracking-widest block mb-1" style={{ color: THEME.teal }}>
               No. Nota: {tx.invoice_number || `#${formatShortId(tx.id, index)}`}
@@ -663,17 +663,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
             </div>
           </section>
 
-          {isUnpaid && paymentSettings?.payment_qris_enabled && (paymentSettings?.xendit_merchant_id || ['AKTIF', 'DIPROSES'].includes((paymentSettings?.xendit_qris_status || '').toUpperCase())) && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center border" style={{ borderColor: '#d1ede8' }}>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">📋 SCAN QRIS STATIS TOKO</p>
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://agrapos.dev/merchant/${(paymentSettings.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'}`}
-                alt="QRIS Statis Toko" 
-                className="w-24 h-24 object-contain mb-1.5"
-              />
-              <span className="font-mono text-[8px] text-slate-400 font-bold">{(paymentSettings.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'}</span>
-            </div>
-          )}
+
 
           {actionMsg && (
             <p
@@ -704,15 +694,31 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
           )}
 
           {isUnpaid && showPaymentPanel && (
-            <section
-              className="bg-white rounded-2xl shadow-sm p-4 space-y-3"
-              style={{ border: `2px solid ${THEME.orange}50` }}
-            >
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: THEME.orange }}>
-                Update Status Pembayaran
-              </p>
-              <div className={`grid gap-2 ${availableMethods.length <= 3 ? 'grid-cols-3' : availableMethods.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {availableMethods.map((m) => (
+            <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
+              <section
+                className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh] pointer-events-auto border space-y-4"
+                style={{ 
+                  borderColor: '#d1ede8',
+                  animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentPanel(false)}
+                  className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition border-none shadow-sm font-black text-sm cursor-pointer active:scale-95"
+                >
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: '#d1ede8' }}>
+                  <span className="text-xl">💳</span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-amber-600">Update Status Pembayaran</p>
+                    <p className="text-[9px] text-slate-400 font-bold">Pilih metode pembayaran baru untuk transaksi ini</p>
+                  </div>
+                </div>
+                <div className={`grid gap-2 ${availableMethods.length <= 3 ? 'grid-cols-3' : availableMethods.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                  {availableMethods.map((m) => (
                   <button
                     key={m.label}
                     type="button"
@@ -892,6 +898,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                 </button>
               </div>
             </section>
+          </div>
           )}
 
           <p className="text-[10px] text-slate-300 font-mono text-center mt-4">No. Nota: {tx.invoice_number || tx.id || '-'}</p>
@@ -927,7 +934,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
       <div
         className="shrink-0 fixed bottom-0 left-0 right-0 z-[1000000] px-4 py-3 sm:py-4 bg-white/90 backdrop-blur-md border-t border-slate-200/60 safe-area-pb"
       >
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
+        <div className="w-full flex items-center gap-3">
           <button
             type="button"
             onClick={handlePrintBluetooth}
