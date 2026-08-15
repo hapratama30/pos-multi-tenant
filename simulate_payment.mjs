@@ -7,14 +7,15 @@ dotenv.config();
 
 const transactionId = process.argv[2];
 const amount = Number(process.argv[3]) || 18000;
-const targetEnv = process.argv[4] || 'local'; // 'local' | 'vercel' | 'xendit-va' | 'xendit-qris'
+const targetEnv = process.argv[4] || 'local'; // 'local' | 'vercel' | 'xendit-va' | 'xendit-qris' | 'ipaymu-local' | 'ipaymu-vercel'
 const subaccountId = process.argv[5]; // subaccount ID for XenPlatform if applicable
+const ipaymuVia = process.argv[6] || 'qris'; // payment channel for iPaymu simulation: 'qris', 'bca', 'mandiri', etc.
 
 const xenditKey = process.env.XENDIT_SECRET_KEY;
 
 if (!transactionId) {
   console.error('❌ ERROR: Silakan masukkan ID Transaksi / QR ID!');
-  console.log('Penggunaan: node simulate_payment.mjs <id> [nominal] [target] [subaccount_id]');
+  console.log('Penggunaan: node simulate_payment.mjs <id> [nominal] [target] [subaccount_id] [ipaymu_via]');
   console.log('\n--- TARGET YANG TERSEDIA ---');
   console.log('1. local         : Tembak langsung webhook Xendit ke localhost (default)');
   console.log('2. vercel        : Tembak langsung webhook Xendit ke server live Vercel');
@@ -23,6 +24,7 @@ if (!transactionId) {
   console.log('5. ipaymu-local  : Tembak langsung webhook iPaymu ke localhost');
   console.log('6. ipaymu-vercel : Tembak langsung webhook iPaymu ke server live Vercel');
   console.log('\nContoh iPaymu Local : node simulate_payment.mjs 201 6000 ipaymu-local');
+  console.log('Contoh iPaymu VA BCA: node simulate_payment.mjs 201 6000 ipaymu-local null bca');
   console.log('Contoh VA Resmi     : node simulate_payment.mjs 173 18000 xendit-va');
   console.log('Contoh QRIS Resmi   : node simulate_payment.mjs qr_1d2d3d4d... 18000 xendit-qris 6a37dc56f5e4e7310c5b6b10');
   process.exit(1);
@@ -92,10 +94,11 @@ if (targetEnv === 'ipaymu-local' || targetEnv === 'ipaymu-vercel') {
     trx_id: String(Math.floor(100000 + Math.random() * 900000)), // dummy trx ID iPaymu
     status: 'berhasil',
     amount: amount,
-    reference_id: `TX-${transactionId}`
+    reference_id: `TX-${transactionId}`,
+    via: ipaymuVia
   };
 
-  console.log(`🚀 Mengirim webhook tiruan iPaymu langsung ke: ${serverUrl}`);
+  console.log(`🚀 Mengirim webhook tiruan iPaymu (${ipaymuVia.toUpperCase()}) langsung ke: ${serverUrl}`);
   console.log(`📦 Payload: ${JSON.stringify(payload, null, 2)}\n`);
 
   try {

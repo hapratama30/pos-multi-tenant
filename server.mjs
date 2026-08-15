@@ -3036,6 +3036,7 @@ app.post('/api/duitku/callback', async (req, res) => {
 
       await supabase.from('tenant_billing').update({
         status: 'paid',
+        payment_method: 'Duitku' + (reference ? ` (${reference})` : ''),
         paid_at: new Date().toISOString()
       }).eq('id', billingId);
 
@@ -3122,6 +3123,7 @@ app.post('/api/tripay/callback', async (req, res) => {
 
       await supabase.from('tenant_billing').update({
         status: 'paid',
+        payment_method: 'Tripay' + (jsonPayload.payment_method ? ` (${jsonPayload.payment_method})` : ''),
         paid_at: new Date().toISOString()
       }).eq('id', billingId);
 
@@ -3191,8 +3193,10 @@ app.post('/api/ipaymu/callback', async (req, res) => {
         return res.status(200).send('OK');
       }
 
+      const via = (req.body.via || '').toLowerCase();
       await supabase.from('tenant_billing').update({
         status: 'paid',
+        payment_method: 'iPaymu' + (via ? ` (${via.toUpperCase()})` : ''),
         paid_at: new Date().toISOString()
       }).eq('id', billingId);
 
@@ -3237,17 +3241,23 @@ app.post('/api/ipaymu/callback', async (req, res) => {
         if (txError) throw txError;
         if (tx) {
           if (tx.status !== 'completed' || tx.payment_method === 'Belum Lunas') {
+            const via = (req.body.via || '').toLowerCase();
+            const isVA = ['bca', 'bni', 'bri', 'mandiri', 'cimb', 'permata', 'danamon', 'btn', 'maybank', 'ocbc'].includes(via) || via === 'va';
+            const displayMethod = isVA 
+              ? `VA iPaymu (${via.toUpperCase()})` 
+              : (via === 'qris' ? 'QRIS (iPaymu)' : 'QRIS (iPaymu)'); // fallback to QRIS
+
             const { error: updateError } = await supabase
               .from('transactions')
               .update({
-                payment_method: 'QRIS (iPaymu)',
+                payment_method: displayMethod,
                 status: 'completed',
                 settlement_status: 'completed'
               })
               .eq('id', transactionId);
 
             if (updateError) throw updateError;
-            console.log(`[iPaymu Callback] Sukses memproses pembayaran transaksi #${transactionId} via iPaymu.`);
+            console.log(`[iPaymu Callback] Sukses memproses pembayaran transaksi #${transactionId} via ${displayMethod}.`);
           }
         } else {
           console.warn(`[iPaymu Callback] Transaksi ID ${transactionId} tidak ditemukan.`);
