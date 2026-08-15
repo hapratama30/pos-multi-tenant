@@ -696,7 +696,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
           {isUnpaid && showPaymentPanel && (
             <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
               <section
-                className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh] pointer-events-auto border space-y-4"
+                className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh] pointer-events-auto border space-y-4"
                 style={{ 
                   borderColor: '#d1ede8',
                   animation: 'slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
