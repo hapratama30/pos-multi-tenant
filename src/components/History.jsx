@@ -733,7 +733,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                   {loadingXendit ? (
                     <div className="text-center py-6">
                       <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API Xendit...</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
                     </div>
                   ) : errorXendit ? (
                     <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
@@ -746,7 +746,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                         alt="QRIS Code Dinamis" 
                         className="w-32 h-32 object-contain animate-in fade-in duration-300"
                       />
-                      <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">XENDIT DYNAMIC QRIS ⚡</span>
+                      <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
                       <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id}</span>
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
@@ -811,7 +811,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                   {loadingXendit ? (
                     <div className="text-center py-6">
                       <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API Xendit...</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
                     </div>
                   ) : errorXendit ? (
                     <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs font-bold text-center">
@@ -820,7 +820,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                   ) : xenditVaNumber ? (
                     <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3 w-full">
                       <div className="min-w-0 flex-1 text-left">
-                        <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (Xendit)</p>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-teal-600">🏦 VA {xenditVaBank} Dinamis (iPaymu)</p>
                         <p className="font-mono font-black text-sm text-slate-900 tracking-wider break-all">{xenditVaNumber}</p>
                         <p className="text-[8px] text-slate-400 font-bold mt-0.5 truncate">Total: {formatRp(tx.total)}</p>
                       </div>

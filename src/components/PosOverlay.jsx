@@ -2435,7 +2435,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                     {loadingXendit ? (
                                       <div className="text-center py-8">
                                         <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API Xendit...</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungi API iPaymu...</p>
                                       </div>
                                     ) : errorXendit ? (
                                       <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-xs font-bold text-center">
@@ -2448,7 +2448,7 @@ export default function PosOverlay({ tenantId, onClose, onSuccess, navbarHeight 
                                           alt="QRIS Code Dinamis"
                                           className="w-32 h-32 object-contain"
                                         />
-                                        <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">XENDIT DYNAMIC QRIS ⚡</span>
+                                        <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
                                         <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {qrisMerchant || 'ID-AGRAPOS-DEMO'} | Tx ID: {savedTransaction?.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
 
                                         {typeof window !== 'undefined' && window.location.hostname !== 'agrapos.vercel.app' && (
