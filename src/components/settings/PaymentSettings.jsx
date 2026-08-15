@@ -620,7 +620,7 @@ export default function PaymentSettings({ tenantId, selectedOutletId, onBack, on
         .from('transactions')
         .select('id, created_at, payment_method, total, settlement_status, settled_at, invoice_number')
         .eq('tenant_id', tenantId)
-        .in('payment_method', ['QRIS', 'Virtual Account'])
+        .or('payment_method.ilike.%qris%,payment_method.ilike.%virtual account%,payment_method.ilike.%va%,payment_method.ilike.%ipaymu%')
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
       if (error) throw error;
