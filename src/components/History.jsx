@@ -283,6 +283,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
 
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [xenditQrCode, setXenditQrCode] = useState('');
+  const [xenditQrCodeId, setXenditQrCodeId] = useState('');
   const [xenditVaNumber, setXenditVaNumber] = useState('');
   const [xenditVaBank, setXenditVaBank] = useState('BCA');
   const [loadingXendit, setLoadingXendit] = useState(false);
@@ -327,6 +328,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
   // Reset states when transaction changes
   useEffect(() => {
     setXenditQrCode('');
+    setXenditQrCodeId('');
     setXenditVaNumber('');
     setErrorXendit('');
   }, [tx?.id]);
@@ -348,6 +350,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
         });
         if (res.success) {
           setXenditQrCode(res.qrString || '');
+          setXenditQrCodeId(res.qrCodeId || '');
         } else {
           throw new Error(res.error || 'Gagal generate QRIS');
         }
@@ -747,7 +750,7 @@ function TransactionDetailScreen({ t, index, onBack, tenantId, onUpdated }) {
                         className="w-32 h-32 object-contain animate-in fade-in duration-300"
                       />
                       <span className="text-[9px] font-black text-emerald-700 tracking-widest mt-2 uppercase">IPAYMU DYNAMIC QRIS ⚡</span>
-                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id} | Ref ID: TX-{tx.id}</span>
+                      <span className="font-mono text-[8px] text-slate-400 font-bold">Merchant ID: {(paymentSettings?.xendit_merchant_id || '').split('|')[0] || 'ID-AGRAPOS-DEMO'} | Tx ID: {tx.id} | Ref ID: TX-{tx.id}{xenditQrCodeId && ` | QR ID: ${xenditQrCodeId}`}</span>
                       <p className="text-xs font-black text-slate-800 mt-2">Total Tagihan: {formatRp(tx.total)}</p>
                       <p className="text-[8px] text-slate-400 font-medium mt-0.5">Status pembayaran akan diperbarui secara otomatis setelah Anda melakukan transfer.</p>
                       
